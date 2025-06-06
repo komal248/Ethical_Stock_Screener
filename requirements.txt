@@ -1,0 +1,13 @@
+streamlit
+requests
+pandas
+yfinance
+plotly
+PyPDF2
+thefuzz
+matplotlib
+wordcloud
+numpy
+Pillow
+openpyxl
+python-dotenv
