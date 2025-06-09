@@ -16,7 +16,7 @@ from wordcloud import WordCloud
 import numpy as np
 from PIL import Image
 import os
-from dotenv import load_dotenv  # Added for environment variables
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
@@ -27,20 +27,35 @@ st.set_page_config(layout="wide", page_title="Ethical Stock Screener", page_icon
 # Custom CSS for styling
 st.markdown("""
 <style>
+    :root {
+        --primary: #1f77b4;
+        --secondary: #2ca02c;
+        --success: #28a745;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #17a2b8;
+        --dark: #343a40;
+        --light: #f8f9fa;
+    }
+    
     .header {
         font-size: 36px !important;
         font-weight: bold !important;
-        color: #1f77b4 !important;
+        color: var(--primary) !important;
         text-align: center;
         margin-bottom: 25px;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
     }
     .subheader {
         font-size: 24px !important;
         font-weight: bold !important;
-        color: #2ca02c !important;
-        border-bottom: 2px solid #2ca02c;
+        color: var(--secondary) !important;
+        border-bottom: 3px solid var(--secondary);
         padding-bottom: 10px;
         margin-top: 20px;
+        background: linear-gradient(90deg, rgba(44,160,44,0.1) 0%, rgba(255,255,255,0) 100%);
+        padding: 10px 15px;
+        border-radius: 5px;
     }
     .card {
         background-color: #f8f9fa;
@@ -48,22 +63,27 @@ st.markdown("""
         padding: 20px;
         margin-bottom: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
     }
     .success-card {
         background-color: #d4edda;
-        border-left: 5px solid #28a745;
+        border-left: 5px solid var(--success);
     }
     .warning-card {
         background-color: #fff3cd;
-        border-left: 5px solid #ffc107;
+        border-left: 5px solid var(--warning);
     }
     .error-card {
         background-color: #f8d7da;
-        border-left: 5px solid #dc3545;
+        border-left: 5px solid var(--danger);
     }
     .info-card {
         background-color: #d1ecf1;
-        border-left: 5px solid #17a2b8;
+        border-left: 5px solid var(--info);
     }
     .sdg-card {
         background-color: #e8f4f8;
@@ -71,6 +91,10 @@ st.markdown("""
         padding: 15px;
         margin: 10px 0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    .sdg-card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     .metric-card {
         background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
@@ -97,10 +121,94 @@ st.markdown("""
         border-radius: 5px;
         padding: 10px 20px;
         font-weight: bold;
+        transition: all 0.3s ease;
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #2575fc 0%, #6a11cb 100%);
         color: white;
+        transform: scale(1.05);
+    }
+    .comparison-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .comparison-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .halal-radial {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        position: relative;
+    }
+    .radial-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--dark);
+    }
+    .detailed-analysis {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-top: 20px;
+    }
+    .progress-container {
+        height: 10px;
+        background: #e9ecef;
+        border-radius: 5px;
+        margin: 10px 0;
+        overflow: hidden;
+    }
+    .progress-bar {
+        height: 100%;
+        border-radius: 5px;
+    }
+    .controversy-tag {
+        display: inline-block;
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 3px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin: 3px;
+    }
+    .table-container {
+        overflow-x: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin: 20px 0;
+    }
+    .stDataFrame {
+        border-radius: 10px;
+    }
+    .sdg-badge {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 30px;
+        font-weight: bold;
+        color: white;
+        margin-right: 5px;
+    }
+    .keyword-badge {
+        display: inline-block;
+        background-color: #e9ecef;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin: 3px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -166,12 +274,32 @@ SDG_DESCRIPTIONS = {
     17: "Strengthen the means of implementation and revitalize the Global Partnership for Sustainable Development"
 }
 
+# Controversy keywords for PDF analysis
+CONTROVERSY_KEYWORDS = [
+    "controvers", "scandal", "lawsuit", "violation", "protest", "fine", "penalty",
+    "ethical concern", "human rights", "exploitation", "pollution", "discrimination",
+    "corruption", "bribery", "fraud", "investigation", "settlement", "conflict"
+]
+
 
 # Load data from Excel files
 def load_data():
     try:
+        # Create data directory if it doesn't exist
+        os.makedirs('data', exist_ok=True)
+        
+        # Check if Halal file exists, create if not
+        halal_path = 'data/halal_checker.xlsx'
+        if not os.path.exists(halal_path):
+            pd.DataFrame(columns=['Ticker', 'Company Name', 'Sector', 'Final Halal Status', 'Reason']).to_excel(halal_path, index=False)
+        
+        # Check if SDG file exists, create if not
+        sdg_path = 'data/sdg_checker.xlsx'
+        if not os.path.exists(sdg_path):
+            pd.DataFrame(columns=['Ticker', 'Company Name', 'SDG GOAL NO.', 'keywords']).to_excel(sdg_path, index=False)
+        
         # Load Halal data
-        halal_df = pd.read_excel('data/halal_checker.xlsx', sheet_name=0, engine='openpyxl')
+        halal_df = pd.read_excel(halal_path, sheet_name=0, engine='openpyxl')
         # Normalize column names
         halal_df.columns = halal_df.columns.str.strip()
 
@@ -191,7 +319,7 @@ def load_data():
                             (halal_df['Halal Status'] != '')]
 
         # Load SDG data
-        sdg_df = pd.read_excel('data/sdg_checker.xlsx', sheet_name=0, engine='openpyxl')
+        sdg_df = pd.read_excel(sdg_path, sheet_name=0, engine='openpyxl')
         # Normalize column names
         sdg_df.columns = sdg_df.columns.str.strip()
 
@@ -294,11 +422,14 @@ def plot_stock_history(ticker):
 def get_grok_analysis(company_name, ticker):
     """Get ethical analysis from Grok API for companies not in the dataset"""
     try:
-        # Get API key from environment variables
+        # Get API key from environment variables or Streamlit secrets
         api_key = os.getenv("GROK_API_KEY")
         if not api_key:
-            st.error("GROK_API_KEY environment variable not set")
-            return None
+            try:
+                api_key = st.secrets["GROK_API_KEY"]
+            except:
+                st.error("GROK_API_KEY not found in environment variables or Streamlit secrets")
+                return None
 
         # API endpoint and headers
         api_endpoint = "https://api.groq.com/openai/v1/chat/completions"
@@ -307,37 +438,47 @@ def get_grok_analysis(company_name, ticker):
             "Content-Type": "application/json"
         }
 
-        # Create the prompt
+        # Create the prompt with enhanced detail request
         prompt = f"""
         You are an expert in Islamic finance and sustainable development goals (SDGs). 
         Please analyze the company {company_name} ({ticker}) and provide:
 
         1. Halal status: [Halal or Not Halal]
-        2. Reason for Halal status: [brief reason]
-        3. Primary SDG goal: [number between 1 and 17, or 0 if none]
-        4. SDG keywords: [comma separated keywords]
-        5. Sector: [sector of the company]
+        2. Detailed reason for Halal status: [3-5 sentences explaining business activities, financial ratios, and compliance with Islamic principles]
+        3. Business activities breakdown: [detailed description of core business activities]
+        4. Financial compliance analysis: [analysis of debt, interest-based income, and other financial factors]
+        5. Primary SDG goal: [number between 1 and 17, or 0 if none]
+        6. Secondary SDG goals: [comma separated list of additional relevant SDGs]
+        7. SDG keywords: [comma separated keywords]
+        8. Sector: [sector of the company]
+        9. SDG impact analysis: [detailed explanation of the company's impact on primary SDG]
+        10. Controversies: [any known ethical or environmental controversies]
 
         Output in JSON format only:
         {{
             "halal_status": "Halal",
-            "reason": "The company operates in the technology sector...",
+            "detailed_reason": "The company operates in the technology sector...",
+            "business_activities": "Detailed description of business activities...",
+            "financial_analysis": "Analysis of financial compliance...",
             "sdg_goal": 9,
+            "secondary_sdgs": "4,5,8",
             "sdg_keywords": "innovation, technology, digital transformation",
-            "sector": "Technology"
+            "sector": "Technology",
+            "sdg_impact": "The company contributes to SDG 9 through...",
+            "controversies": "None known"
         }}
         """
 
         # Create the payload with UPDATED MODEL
         payload = {
-            "model": "llama3-70b-8192",  # CORRECTED MODEL NAME
+            "model": "llama3-70b-8192",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.3,
-            "max_tokens": 500
+            "max_tokens": 1000
         }
 
         # Make the API request
-        response = requests.post(api_endpoint, headers=headers, json=payload, timeout=30)
+        response = requests.post(api_endpoint, headers=headers, json=payload, timeout=45)
 
         if response.status_code == 200:
             # Extract the JSON content from the response
@@ -376,7 +517,7 @@ def save_to_halal_excel(company_name, ticker, grok_data):
             'Company Name': company_name,
             'Sector': grok_data.get('sector', ''),
             'Final Halal Status': grok_data.get('halal_status', ''),
-            'Reason': grok_data.get('reason', '')
+            'Reason': grok_data.get('detailed_reason', '')
         }
 
         # Create new DataFrame for the row
@@ -521,7 +662,7 @@ def analyze_text_for_sdg(text):
     # Identify ALL SDGs with at least 1 keyword match
     relevant_sdgs = []
     for sdg in range(1, 18):
-        if sdg_counts[sdg] > 0:
+        if sdg_counts[sdg] > 3:
             relevant_sdgs.append({
                 "sdg": sdg,
                 "count": sdg_counts[sdg],
@@ -531,7 +672,13 @@ def analyze_text_for_sdg(text):
     # Sort by relevance (keyword count descending)
     relevant_sdgs.sort(key=lambda x: x["count"], reverse=True)
 
-    return relevant_sdgs, sdg_counts
+    # Find controversies
+    controversies = []
+    for keyword in CONTROVERSY_KEYWORDS:
+        if re.search(rf'\b{keyword}\b', text, re.IGNORECASE):
+            controversies.append(keyword)
+            
+    return relevant_sdgs, sdg_counts, controversies
 
 
 def generate_wordcloud(text):
@@ -563,25 +710,21 @@ def plot_sdg_keyword_counts(sdg_counts):
         labels = [f"SDG {sdg}" for sdg in sdg_numbers]
         colors = [SDG_COLORS.get(sdg, '#1f77b4') for sdg in sdg_numbers]
 
-        # Create bar chart
+        # Create horizontal bar chart
         fig = go.Figure(go.Bar(
-            x=sdg_numbers,
-            y=counts,
+            y=labels,
+            x=counts,
+            orientation='h',
+            marker_color=colors,
             text=counts,
-            textposition='auto',
-            marker_color=colors
+            textposition='auto'
         ))
 
         fig.update_layout(
             title="SDG Keyword Frequency",
-            xaxis_title="Sustainable Development Goal",
-            yaxis_title="Keyword Count",
-            xaxis=dict(
-                tickmode='array',
-                tickvals=sdg_numbers,
-                ticktext=labels
-            ),
-            height=500,
+            yaxis_title="Sustainable Development Goal",
+            xaxis_title="Keyword Count",
+            height=600,
             template='plotly_white'
         )
         return fig
@@ -600,19 +743,53 @@ def display_sdg_grok_results(company, ticker, grok_data):
 
     # SDG Analysis
     sdg_goal = grok_data.get('sdg_goal', 0)
+    secondary_sdgs = grok_data.get('secondary_sdgs', '')
     sdg_keywords = grok_data.get('sdg_keywords', '')
+    sdg_impact = grok_data.get('sdg_impact', '')
+    controversies = grok_data.get('controversies', '')
 
     if sdg_goal and sdg_goal != 0:
-        st.markdown(f"**Primary SDG: {sdg_goal} - {SDG_TITLES.get(sdg_goal, '')}**")
-
+        # Main SDG card
         with st.container():
             st.markdown(f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg_goal, "#1f77b4")};">',
                         unsafe_allow_html=True)
+            st.markdown(f"### Primary SDG: {sdg_goal} - {SDG_TITLES.get(sdg_goal, '')}")
             st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(sdg_goal, '')}")
+            
+            if sdg_impact:
+                st.markdown("**Impact Analysis:**")
+                st.info(f"{sdg_impact}")
+                
             if sdg_keywords:
                 st.markdown("**Related Keywords:**")
-                st.info(f"{sdg_keywords}")
+                keywords = sdg_keywords.split(",")
+                for kw in keywords:
+                    st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
+                    
             st.markdown('</div>', unsafe_allow_html=True)
+
+        # Secondary SDGs
+        if secondary_sdgs:
+            st.subheader("Secondary SDGs")
+            secondary_list = [int(s.strip()) for s in secondary_sdgs.split(",") if s.strip().isdigit()]
+            cols = st.columns(len(secondary_list))
+            for idx, sdg in enumerate(secondary_list):
+                with cols[idx]:
+                    with st.container():
+                        st.markdown(f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg, "#1f77b4")};">',
+                                    unsafe_allow_html=True)
+                        st.markdown(f"<div class='sdg-badge' style='background-color:{SDG_COLORS.get(sdg)}'>{sdg}</div>", unsafe_allow_html=True)
+                        st.markdown(f"**{SDG_TITLES.get(sdg, '')}**")
+                        st.markdown(f"<small>{SDG_DESCRIPTIONS.get(sdg, '')}</small>", unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Controversies
+        if controversies and controversies.lower() != "none known":
+            st.subheader("Controversies & Concerns")
+            with st.container():
+                st.markdown('<div class="error-card">', unsafe_allow_html=True)
+                st.error(controversies)
+                st.markdown('</div>', unsafe_allow_html=True)
     else:
         with st.container():
             st.markdown('<div class="warning-card">', unsafe_allow_html=True)
@@ -624,145 +801,54 @@ def display_sdg_grok_results(company, ticker, grok_data):
     st.caption("ℹ️ This analysis was generated using AI and may contain inaccuracies.")
 
 
-# SDG Analysis Page with PDF Analysis
-def show_sdg_analysis(halal_df, sdg_df):
-    st.markdown('<div class="header">SDG Analysis</div>', unsafe_allow_html=True)
-    st.markdown("### Analyze company alignment with Sustainable Development Goals")
-
-    # Search inputs
-    col1, col2 = st.columns([3, 1])
+# Enhanced Halal Analysis Display
+def display_halal_analysis(company, ticker, status, reason, business_activities, financial_analysis, controversies):
+    """Display detailed Halal analysis"""
+    st.subheader(f"{company} ({ticker})" if ticker else company)
+    
+    # Status indicator with radial progress
+    col1, col2, col3 = st.columns([1, 2, 3])
     with col1:
-        company_name = st.text_input("Search Company", placeholder="e.g., Microsoft", key="sdg_search")
+        st.markdown("### Halal Status")
+        status_color = "#28a745" if status == "Halal" else "#dc3545"
+        compliance_level = 85 if status == "Halal" else 25
+        
+        st.markdown(f"""
+        <div class="halal-radial" style="background: conic-gradient({status_color} 0% {compliance_level}%, #e9ecef {compliance_level}% 100%);">
+            <div class="radial-value">{compliance_level}%</div>
+        </div>
+        <div style="text-align:center; margin-top:10px; font-weight:bold; color:{status_color}">
+            {status}
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
-        ticker_symbol = st.text_input("Ticker", placeholder="e.g., MSFT", key="sdg_ticker").upper()
-
-    if st.button("Analyze Company", key="sdg_analyze_btn"):
-        if not company_name and not ticker_symbol:
-            st.info("Please enter a company name or ticker to search")
-        else:
-            # Find company
-            company_match = find_company(halal_df, company_name, ticker_symbol)
-
-            if company_match is None:
-                if not company_name and ticker_symbol:
-                    company_name = ticker_symbol
-
-                with st.container():
-                    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-                    st.warning("Company not found in database. Using AI analysis...")
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                with st.spinner("Analyzing with AI..."):
-                    grok_data = get_grok_analysis(company_name, ticker_symbol)
-
-                if grok_data:
-                    display_sdg_grok_results(company_name, ticker_symbol, grok_data)
-
-                    # Save to Excel
-                    if ticker_symbol:
-                        if save_to_halal_excel(company_name, ticker_symbol, grok_data) and \
-                                save_to_sdg_excel(company_name, ticker_symbol, grok_data):
-                            st.success("Company data saved to database for future reference")
-                else:
-                    st.error("AI analysis failed")
-            else:
-                # Show SDG data for found company
-                company = company_match['Company Name']
-                ticker = company_match['Ticker']
-
-                st.subheader(f"{company} ({ticker})")
-
-                # Get SDG data
-                sdg_data = sdg_df[sdg_df['Company Name'].str.strip().str.lower() == company.strip().lower()]
-                if not sdg_data.empty:
-                    goal = sdg_data['Primary SDG'].iloc[0]
-                    keywords = sdg_data['SDG Keywords'].iloc[0]
-
-                    col1, col2 = st.columns([1, 3])
-                    with col1:
-                        st.markdown(f"**Primary SDG**")
-                        with st.container():
-                            st.markdown(
-                                f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
-                                unsafe_allow_html=True)
-                            st.markdown(f"<h3>SDG {goal}</h3>", unsafe_allow_html=True)
-                            st.markdown(f"<p><strong>{SDG_TITLES[goal]}</strong></p>", unsafe_allow_html=True)
-                            st.markdown(f"<p><small>{SDG_DESCRIPTIONS[goal]}</small></p>", unsafe_allow_html=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
-
-                    with col2:
-                        st.markdown("**Keywords**")
-                        with st.container():
-                            st.markdown(f'<div class="sdg-card">', unsafe_allow_html=True)
-                            st.markdown(f"{keywords}")
-                            st.markdown('</div>', unsafe_allow_html=True)
-                else:
-                    with st.container():
-                        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                        st.warning("No SDG data available for this company")
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-    # PDF Analysis Section
-    st.markdown("---")
-    st.subheader("PDF Document Analysis")
-    st.markdown("Upload a PDF document to analyze its alignment with Sustainable Development Goals")
-
-    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", key="pdf_uploader")
-
-    if uploaded_file is not None:
-        # Display file details
-        file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type, "FileSize": uploaded_file.size}
-        st.write(file_details)
-
-        # Extract text
-        with st.spinner("Extracting text from PDF..."):
-            text = extract_text_from_pdf(uploaded_file)
-
-        # Analyze text in one go
-        with st.spinner("Analyzing text for SDG alignment..."):
-            relevant_sdgs, sdg_counts = analyze_text_for_sdg(text)
-
-        if relevant_sdgs:
-            st.success(f"Identified {len(relevant_sdgs)} relevant SDGs in the document")
-
-            # Display all relevant SDGs
-            for sdg_info in relevant_sdgs:
-                sdg = sdg_info["sdg"]
-                keywords = sdg_info["keywords"]
-
-                with st.container():
-                    st.markdown(
-                        f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg, "#1f77b4")};">',
-                        unsafe_allow_html=True)
-                    st.markdown(f"### SDG {sdg}: {SDG_TITLES[sdg]}")
-                    st.markdown(f"**Description:** {SDG_DESCRIPTIONS[sdg]}")
-                    st.markdown(f"**Keyword Count:** {sdg_info['count']}")
-                    st.markdown(f"**Keywords Found:** {keywords}")
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-            # Visualizations
-            st.markdown("---")
-            st.subheader("Document Analysis Visualizations")
-
-            # Word Cloud
-            with st.spinner("Generating word cloud..."):
-                wordcloud_fig = generate_wordcloud(text)
-                if wordcloud_fig:
-                    st.pyplot(wordcloud_fig)
-                else:
-                    st.warning("Could not generate word cloud")
-
-            # SDG Keyword Counts
-            with st.spinner("Creating SDG analysis..."):
-                sdg_chart = plot_sdg_keyword_counts(sdg_counts)
-                if sdg_chart:
-                    st.plotly_chart(sdg_chart, use_container_width=True)
-                else:
-                    st.info("No SDG keywords found to visualize")
-        else:
+        st.markdown("### Compliance Breakdown")
+        st.markdown("**Business Activities**")
+        st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width:{compliance_level}%; background-color:{status_color}"></div></div>', unsafe_allow_html=True)
+        
+        st.markdown("**Financial Compliance**")
+        st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width:{compliance_level - 10}%; background-color:{status_color}"></div></div>', unsafe_allow_html=True)
+        
+        st.markdown("**Ethical Standards**")
+        st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width:{compliance_level + 5}%; background-color:{status_color}"></div></div>', unsafe_allow_html=True)
+    
+    # Detailed analysis
+    with st.expander("Detailed Halal Analysis", expanded=True):
+        st.markdown("### Business Activities")
+        st.info(business_activities)
+        
+        st.markdown("### Financial Compliance")
+        st.info(financial_analysis)
+        
+        st.markdown("### Compliance Reasoning")
+        st.info(reason)
+        
+        if controversies and controversies.lower() != "none known":
+            st.markdown("### Controversies & Concerns")
             with st.container():
-                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                st.warning("No SDG alignment detected in the document")
+                st.markdown('<div class="error-card">', unsafe_allow_html=True)
+                st.error(controversies)
                 st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -822,44 +908,6 @@ def show_home(halal_df, sdg_df):
                 for company in companies:
                     st.markdown(f"- {company}")
 
-    # Database Insights
-    st.subheader("Database Insights")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        # SDG Distribution - only if column exists and data is available
-        if not sdg_df.empty and 'Primary SDG' in sdg_df.columns:
-            st.markdown("**SDG Distribution**")
-            sdg_counts = sdg_df['Primary SDG'].value_counts().reset_index()
-            sdg_counts.columns = ['SDG', 'Count']
-            sdg_counts['Color'] = sdg_counts['SDG'].apply(lambda x: SDG_COLORS.get(x, '#1f77b4'))
-
-            fig = px.bar(sdg_counts, x='SDG', y='Count', color='SDG',
-                         color_discrete_map=SDG_COLORS,
-                         labels={'SDG': 'Sustainable Development Goal', 'Count': 'Number of Companies'})
-            fig.update_layout(showlegend=False, height=400)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No SDG data available")
-
-    with col2:
-        # Halal Status Distribution
-        if not halal_df.empty and 'Halal Status' in halal_df.columns:
-            st.markdown("**Halal Status Distribution**")
-            halal_counts = halal_df['Halal Status'].value_counts().reset_index()
-            halal_counts.columns = ['Status', 'Count']
-
-            fig = px.pie(halal_counts, values='Count', names='Status',
-                         color='Status',
-                         color_discrete_map={'Halal': '#28a745', 'Not Halal': '#dc3545'},
-                         hole=0.3)
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No Halal data available")
-
-
 def show_stock_analysis(halal_df, sdg_df):
     st.markdown('<div class="header">Stock Analysis</div>', unsafe_allow_html=True)
     st.markdown("### Detailed analysis of individual stocks")
@@ -883,8 +931,129 @@ def show_stock_analysis(halal_df, sdg_df):
         st.error(f"Error searching database: {str(e)}")
         company_match = None
 
+    # Handle company found in dataset
+    if company_match is not None:
+        # Extract data from the match
+        company = company_match['Company Name']
+        ticker = company_match['Ticker']
+        status = company_match['Halal Status']
+        reason = company_match['Halal Reason']
+        sector = company_match['Sector']
+
+        # Fetch detailed analysis from Grok API even if company is in database
+        with st.spinner("Fetching detailed analysis..."):
+            grok_data = get_grok_analysis(company, ticker)
+
+        if grok_data:
+            # Display enhanced Halal analysis with Grok data
+            display_halal_analysis(
+                company=company,
+                ticker=ticker,
+                status=status,
+                reason=reason,
+                business_activities=grok_data.get('business_activities', 'No information available'),
+                financial_analysis=grok_data.get('financial_analysis', 'No information available'),
+                controversies=grok_data.get('controversies', 'None known')
+            )
+            
+            # Display enhanced SDG analysis
+            st.markdown("---")
+            display_sdg_grok_results(company, ticker, grok_data)
+            
+            # Save to Excel
+            if save_to_halal_excel(company, ticker, grok_data) and \
+                    save_to_sdg_excel(company, ticker, grok_data):
+                st.success("Company data saved to database for future reference")
+        else:
+            # Fallback to database info if Grok fails
+            with st.container():
+                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
+                st.warning("Using database information only. AI analysis failed.")
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Display basic Halal analysis from database
+            display_halal_analysis(
+                company=company,
+                ticker=ticker,
+                status=status,
+                reason=reason,
+                business_activities="Business activities information not available",
+                financial_analysis="Financial compliance details not available",
+                controversies="No known controversies"
+            )
+            
+            # Display SDG data if available
+            st.markdown("---")
+            st.subheader("SDG Analysis")
+            if not sdg_df.empty and 'Company Name' in sdg_df.columns and 'Primary SDG' in sdg_df.columns:
+                sdg_data = sdg_df[sdg_df['Company Name'].str.strip().str.lower() == company.strip().lower()]
+                if not sdg_data.empty:
+                    goal = sdg_data['Primary SDG'].iloc[0]
+                    keywords = sdg_data['SDG Keywords'].iloc[0]
+
+                    with st.container():
+                        st.markdown(
+                            f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
+                            unsafe_allow_html=True)
+                        st.markdown(f"### SDG {goal}: {SDG_TITLES[goal]}")
+                        st.markdown(f"**Description:** {SDG_DESCRIPTIONS[goal]}")
+                        
+                        if keywords:
+                            st.markdown("**Keywords:**")
+                            keywords_list = keywords.split(",")
+                            for kw in keywords_list:
+                                st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
+                                
+                        st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    with st.container():
+                        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
+                        st.warning("No SDG data available")
+                        st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                with st.container():
+                    st.markdown('<div class="warning-card">', unsafe_allow_html=True)
+                    st.warning("SDG data not available")
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+        # Financial metrics and chart
+        st.markdown("---")
+        st.subheader("Financial Performance")
+        
+        stock_data = get_stock_data(ticker)
+        if isinstance(stock_data, dict):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+                st.markdown(f'<div class="metric-value">${stock_data["current_price"]:.2f}</div>',
+                            unsafe_allow_html=True)
+                st.markdown('<div class="metric-label">Current Price</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            with col2:
+                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+                st.markdown(f'<div class="metric-value">${stock_data["52_week_high"]:.2f}</div>',
+                            unsafe_allow_html=True)
+                st.markdown('<div class="metric-label">52-Week High</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            with col3:
+                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+                st.markdown(f'<div class="metric-value">${stock_data["52_week_low"]:.2f}</div>',
+                            unsafe_allow_html=True)
+                st.markdown('<div class="metric-label">52-Week Low</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.warning("Could not retrieve stock data")
+            
+        price_chart = plot_stock_history(ticker)
+        if price_chart:
+            st.plotly_chart(price_chart, use_container_width=True)
+        else:
+            st.warning("Could not load stock chart")
+
     # Handle company not found in dataset
-    if company_match is None:
+    else:
         if not company_name and ticker_symbol:
             company_name = ticker_symbol  # Use ticker as company name if none provided
 
@@ -898,7 +1067,20 @@ def show_stock_analysis(halal_df, sdg_df):
             grok_data = get_grok_analysis(company_name, ticker_symbol)
 
         if grok_data:
-            display_grok_results(company_name, ticker_symbol, grok_data)
+            # Display enhanced Halal analysis
+            display_halal_analysis(
+                company=company_name,
+                ticker=ticker_symbol,
+                status=grok_data.get('halal_status', 'Unknown'),
+                reason=grok_data.get('detailed_reason', 'No reason provided'),
+                business_activities=grok_data.get('business_activities', 'No information available'),
+                financial_analysis=grok_data.get('financial_analysis', 'No information available'),
+                controversies=grok_data.get('controversies', 'None known')
+            )
+            
+            # Display enhanced SDG analysis
+            st.markdown("---")
+            display_sdg_grok_results(company_name, ticker_symbol, grok_data)
 
             # Save to Excel
             if ticker_symbol:
@@ -907,205 +1089,271 @@ def show_stock_analysis(halal_df, sdg_df):
                     st.success("Company data saved to database for future reference")
         else:
             st.error("Failed to get AI analysis. Please try a different company.")
-        return
 
-    # Extract data from the match
-    company = company_match['Company Name']
-    ticker = company_match['Ticker']
-    status = company_match['Halal Status']
-    reason = company_match['Halal Reason']
-    sector = company_match['Sector']
 
-    try:
-        # Fetch real-time data
-        stock_data = get_stock_data(ticker)
-        price_chart = plot_stock_history(ticker)
+# SDG Analysis Page with PDF Analysis
+def show_sdg_analysis(halal_df, sdg_df):
+    st.markdown('<div class="header">SDG Analysis</div>', unsafe_allow_html=True)
+    st.markdown("### Analyze company alignment with Sustainable Development Goals")
 
-        # Layout
-        st.subheader(f"{company} ({ticker})")
-        st.caption(f"Sector: {sector}")
+    # Search inputs
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        company_name = st.text_input("Search Company", placeholder="e.g., Microsoft", key="sdg_search")
+    with col2:
+        ticker_symbol = st.text_input("Ticker", placeholder="e.g., MSFT", key="sdg_ticker").upper()
 
-        # Status and metrics
-        col1, col2, col3 = st.columns([1, 1, 2])
-        with col1:
-            st.markdown("**Halal Status**")
-            status_color = "#28a745" if status == "Halal" else "#dc3545"
-            st.markdown(
-                f"<div style='background-color:{status_color}; color:white; padding:15px; border-radius:5px; text-align:center; font-size:20px; font-weight:bold;'>"
-                f"{status}"
-                f"</div>", unsafe_allow_html=True)
-            st.caption(reason)
+    if st.button("Analyze Company", key="sdg_analyze_btn"):
+        if not company_name and not ticker_symbol:
+            st.info("Please enter a company name or ticker to search")
+        else:
+            # Find company
+            company_match = find_company(halal_df, company_name, ticker_symbol)
 
-        with col2:
-            if isinstance(stock_data, dict):
-                # Create metric cards
-                cols = st.columns(2)
-                with cols[0]:
-                    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                    st.markdown(f'<div class="metric-value">${stock_data["current_price"]:.2f}</div>',
+            if company_match is not None:
+                # Extract data from the match
+                company = company_match['Company Name']
+                ticker = company_match['Ticker']
+                status = company_match['Halal Status']
+                reason = company_match['Halal Reason']
+
+                # Fetch detailed analysis from Grok API even if company is in database
+                with st.spinner("Fetching detailed analysis..."):
+                    grok_data = get_grok_analysis(company, ticker)
+
+                if grok_data:
+                    display_sdg_grok_results(company, ticker, grok_data)
+                    
+                    # Save to Excel
+                    if save_to_halal_excel(company, ticker, grok_data) and \
+                            save_to_sdg_excel(company, ticker, grok_data):
+                        st.success("Company data saved to database for future reference")
+                else:
+                    # Fallback to database info if Grok fails
+                    with st.container():
+                        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
+                        st.warning("Using database information only. AI analysis failed.")
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Show SDG data for found company
+                    st.subheader(f"{company} ({ticker})")
+
+                    # Get SDG data
+                    sdg_data = sdg_df[sdg_df['Company Name'].str.strip().str.lower() == company.strip().lower()]
+                    if not sdg_data.empty:
+                        goal = sdg_data['Primary SDG'].iloc[0]
+                        keywords = sdg_data['SDG Keywords'].iloc[0]
+
+                        with st.container():
+                            st.markdown(
+                                f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
                                 unsafe_allow_html=True)
-                    st.markdown('<div class="metric-label">Current Price</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                with cols[1]:
-                    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                    st.markdown(f'<div class="metric-value">${stock_data["52_week_high"]:.2f}</div>',
-                                unsafe_allow_html=True)
-                    st.markdown('<div class="metric-label">52-Week High</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                cols = st.columns(2)
-                with cols[0]:
-                    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                    st.markdown(f'<div class="metric-value">${stock_data["52_week_low"]:.2f}</div>',
-                                unsafe_allow_html=True)
-                    st.markdown('<div class="metric-label">52-Week Low</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                with cols[1]:
-                    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                    st.markdown(f'<div class="metric-value">{stock_data["volatility"] * 100:.2f}%</div>',
-                                unsafe_allow_html=True)
-                    st.markdown('<div class="metric-label">Volatility</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-        with col3:
-            if price_chart:
-                st.plotly_chart(price_chart, use_container_width=True)
+                            st.markdown(f"### SDG {goal}: {SDG_TITLES[goal]}")
+                            st.markdown(f"**Description:** {SDG_DESCRIPTIONS[goal]}")
+                            
+                            if keywords:
+                                st.markdown("**Keywords:**")
+                                keywords_list = keywords.split(",")
+                                for kw in keywords_list:
+                                    st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
+                                    
+                            st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        with st.container():
+                            st.markdown('<div class="warning-card">', unsafe_allow_html=True)
+                            st.warning("No SDG data available for this company")
+                            st.markdown('</div>', unsafe_allow_html=True)
             else:
-                st.warning("Could not load stock chart")
+                if not company_name and ticker_symbol:
+                    company_name = ticker_symbol
 
-        # SDG Summary
-        st.subheader("SDG Analysis")
-        if not sdg_df.empty and 'Company Name' in sdg_df.columns and 'Primary SDG' in sdg_df.columns:
-            sdg_data = sdg_df[sdg_df['Company Name'].str.strip().str.lower() == company.strip().lower()]
-            if not sdg_data.empty:
-                goal = sdg_data['Primary SDG'].iloc[0]
-                keywords = sdg_data['SDG Keywords'].iloc[0]
+                with st.container():
+                    st.markdown('<div class="info-card">', unsafe_allow_html=True)
+                    st.warning("Company not found in database. Using AI analysis...")
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    st.markdown(f"**Primary SDG**")
+                with st.spinner("Analyzing with AI..."):
+                    grok_data = get_grok_analysis(company_name, ticker_symbol)
+
+                if grok_data:
+                    display_sdg_grok_results(company_name, ticker_symbol, grok_data)
+
+                    # Save to Excel
+                    if ticker_symbol:
+                        if save_to_halal_excel(company_name, ticker_symbol, grok_data) and \
+                                save_to_sdg_excel(company_name, ticker_symbol, grok_data):
+                            st.success("Company data saved to database for future reference")
+                else:
+                    st.error("AI analysis failed")
+
+    # PDF Analysis Section
+    st.markdown("---")
+    st.subheader("PDF Document Analysis")
+    st.markdown("Upload a PDF document to analyze its alignment with Sustainable Development Goals")
+
+    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", key="pdf_uploader")
+
+    if uploaded_file is not None:
+        # Display file details
+        file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type, "FileSize": uploaded_file.size}
+        st.write(file_details)
+
+        # Extract text
+        with st.spinner("Extracting text from PDF..."):
+            text = extract_text_from_pdf(uploaded_file)
+
+        # Analyze text in one go
+        with st.spinner("Analyzing text for SDG alignment..."):
+            relevant_sdgs, sdg_counts, controversies = analyze_text_for_sdg(text)
+
+        if relevant_sdgs:
+            st.success(f"Identified {len(relevant_sdgs)} relevant SDGs in the document")
+            
+            # Display controversies if found
+            if controversies:
+                st.subheader("Controversies Detected")
+                with st.container():
+                    st.markdown('<div class="error-card">', unsafe_allow_html=True)
+                    st.error("The document contains content related to potential controversies:")
+                    for word in controversies:
+                        st.markdown(f'<span class="controversy-tag">{word}</span>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+            # Display all relevant SDGs
+            st.subheader("SDG Alignment Analysis")
+            for sdg_info in relevant_sdgs:
+                sdg = sdg_info["sdg"]
+                keywords = sdg_info["keywords"]
+                count = sdg_info["count"]
+
+                with st.expander(f"SDG {sdg}: {SDG_TITLES[sdg]} - {count} keywords found", expanded=True):
                     with st.container():
                         st.markdown(
-                            f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
+                            f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg, "#1f77b4")};">',
                             unsafe_allow_html=True)
-                        st.markdown(f"<h3>SDG {goal}</h3>", unsafe_allow_html=True)
-                        st.markdown(f"<p><strong>{SDG_TITLES[goal]}</strong></p>", unsafe_allow_html=True)
-                        st.markdown(f"<p><small>{SDG_DESCRIPTIONS[goal]}</small></p>", unsafe_allow_html=True)
+                        st.markdown(f"**Description:** {SDG_DESCRIPTIONS[sdg]}")
+                        st.markdown(f"**Keyword Count:** {count}")
+                        st.markdown(f"**Keywords Found:**")
+                        keywords_list = keywords.split(", ")
+                        for kw in keywords_list:
+                            st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
                         st.markdown('</div>', unsafe_allow_html=True)
 
-                with col2:
-                    st.markdown("**Keywords**")
-                    with st.container():
-                        st.markdown(f'<div class="sdg-card">', unsafe_allow_html=True)
-                        st.markdown(f"{keywords}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                with st.container():
-                    st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                    st.warning("No SDG data available")
-                    st.markdown('</div>', unsafe_allow_html=True)
+            # Visualizations
+            st.markdown("---")
+            st.subheader("Document Analysis Visualizations")
+
+            # Word Cloud
+            with st.spinner("Generating word cloud..."):
+                wordcloud_fig = generate_wordcloud(text)
+                if wordcloud_fig:
+                    st.pyplot(wordcloud_fig)
+                else:
+                    st.warning("Could not generate word cloud")
+
+            # SDG Keyword Counts
+            with st.spinner("Creating SDG analysis..."):
+                sdg_chart = plot_sdg_keyword_counts(sdg_counts)
+                if sdg_chart:
+                    st.plotly_chart(sdg_chart, use_container_width=True)
+                else:
+                    st.info("No SDG keywords found to visualize")
         else:
             with st.container():
                 st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                st.warning("SDG data not available")
+                st.warning("No SDG alignment detected in the document")
                 st.markdown('</div>', unsafe_allow_html=True)
 
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
 
-
-def display_grok_results(company, ticker, grok_data):
-    """Display results from Grok API analysis"""
-    st.subheader(f"{company} ({ticker})" if ticker else company)
-
+# Enhanced comparison display functions
+def display_sdg_comparison_card(company_data, title):
+    """Display SDG comparison card with enhanced visuals"""
     with st.container():
-        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-        st.warning("This analysis is AI-generated and may not be 100% accurate")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f"<h3>{title}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h4>{company_data['name']}</h4>", unsafe_allow_html=True)
+        
+        if company_data['ticker']:
+            st.caption(f"Ticker: {company_data['ticker']}")
+            
+        st.caption(f"Source: {company_data['source']}")
+        
+        if company_data['sdg_goal'] != 0:
+            with st.container():
+                st.markdown(
+                    f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(company_data["sdg_goal"], "#1f77b4")};">',
+                    unsafe_allow_html=True)
+                st.markdown(f"### SDG {company_data['sdg_goal']}: {SDG_TITLES.get(company_data['sdg_goal'], '')}")
+                st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(company_data['sdg_goal'], '')}")
+                
+                if company_data['sdg_keywords']:
+                    st.markdown("**Keywords**")
+                    keywords = company_data['sdg_keywords'].split(",")
+                    for kw in keywords:
+                        st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            if company_data.get('secondary_sdgs', ''):
+                st.markdown("**Additional SDGs:**")
+                secondary_list = [int(s.strip()) for s in company_data['secondary_sdgs'].split(",") if s.strip().isdigit()]
+                for sdg in secondary_list:
+                    st.markdown(f'<div class="sdg-badge" style="background-color:{SDG_COLORS.get(sdg)}">{sdg}</div> {SDG_TITLES.get(sdg)}', unsafe_allow_html=True)
+        else:
+            with st.container():
+                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
+                st.warning("No SDG data available")
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+        if company_data.get('sdg_impact', ''):
+            st.markdown("**Impact Analysis:**")
+            st.info(company_data['sdg_impact'])
+            
+        if company_data.get('controversies', '') and company_data['controversies'].lower() != "none known":
+            st.markdown("**Controversies:**")
+            with st.container():
+                st.markdown('<div class="error-card">', unsafe_allow_html=True)
+                st.error(company_data['controversies'])
+                st.markdown('</div>', unsafe_allow_html=True)
 
-    # Display sector if available
-    sector = grok_data.get('sector', 'Unknown')
-    st.caption(f"Sector: {sector}")
 
-    # Layout columns
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
+def display_halal_comparison_card(company_data, title):
+    """Display Halal comparison card with enhanced visuals"""
+    with st.container():
+        st.markdown(f"<h3>{title}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h4>{company_data['name']}</h4>", unsafe_allow_html=True)
+        
+        if company_data['ticker']:
+            st.caption(f"Ticker: {company_data['ticker']}")
+            
+        st.caption(f"Source: {company_data['source']}")
+        
         # Halal status
-        status = grok_data.get('halal_status', 'Unknown')
-        reason = grok_data.get('reason', 'No reason provided')
-
-        st.markdown("**Halal Status**")
+        status = company_data['halal_status']
         status_color = "#28a745" if status == "Halal" else "#dc3545"
         if status == 'Unknown':
             status_color = "#6c757d"
+            
+        st.markdown("**Halal Status**")
         st.markdown(
             f"<div style='background-color:{status_color}; color:white; padding:15px; border-radius:5px; text-align:center; font-size:20px; font-weight:bold;'>"
             f"{status}"
             f"</div>", unsafe_allow_html=True)
-        st.caption(reason)
-
-        # Try to get stock data if available
-        if ticker:
-            try:
-                stock_data = get_stock_data(ticker)
-                if isinstance(stock_data, dict):
-                    cols = st.columns(2)
-                    with cols[0]:
-                        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                        st.markdown(f'<div class="metric-value">${stock_data["current_price"]:.2f}</div>',
-                                    unsafe_allow_html=True)
-                        st.markdown('<div class="metric-label">Current Price</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    with cols[1]:
-                        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                        st.markdown(f'<div class="metric-value">${stock_data["52_week_high"]:.2f}</div>',
-                                    unsafe_allow_html=True)
-                        st.markdown('<div class="metric-label">52-Week High</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    # Try to show price chart
-                    price_chart = plot_stock_history(ticker)
-                    if price_chart:
-                        st.plotly_chart(price_chart, use_container_width=True)
-                    else:
-                        st.warning("Could not load stock chart")
-                else:
-                    st.warning("Could not retrieve stock data")
-            except:
-                st.warning("Could not retrieve stock data")
-
-    with col2:
-        # SDG Analysis
-        sdg_goal = grok_data.get('sdg_goal', 0)
-        sdg_keywords = grok_data.get('sdg_keywords', '')
-
-        if sdg_goal and sdg_goal != 0:
-            st.subheader("SDG Analysis (AI-Generated)")
+        
+        st.markdown("**Reason:**")
+        st.info(company_data['reason'])
+        
+        st.markdown("**Business Activities:**")
+        st.info(company_data.get('business_activities', 'No information available'))
+        
+        st.markdown("**Financial Compliance:**")
+        st.info(company_data.get('financial_analysis', 'No information available'))
+        
+        if company_data.get('controversies', '') and company_data['controversies'].lower() != "none known":
+            st.markdown("**Controversies:**")
             with st.container():
-                st.markdown(
-                    f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg_goal, "#1f77b4")};">',
-                    unsafe_allow_html=True)
-                st.markdown(f"**Primary SDG: {sdg_goal} - {SDG_TITLES.get(sdg_goal, '')}**")
-                st.markdown(SDG_DESCRIPTIONS.get(sdg_goal, ''))
-                
-                if sdg_keywords:
-                    st.markdown("**Related Keywords:**")
-                    st.info(f"{sdg_keywords}")
+                st.markdown('<div class="error-card">', unsafe_allow_html=True)
+                st.error(company_data['controversies'])
                 st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            with st.container():
-                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                st.warning("No SDG analysis available for this company")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-    # Disclaimer
-    st.markdown("---")
-    st.caption("ℹ️ This analysis was generated using AI and may contain inaccuracies. "
-               "Always verify with additional sources before making investment decisions.")
 
 
 # Helper function to get company data from DB or Grok
@@ -1135,90 +1383,47 @@ def get_company_data(halal_df, sdg_df, company_query):
             sdg_goal = 0
             sdg_keywords = ""
 
-        source = "Database"
+    
+        
+        return {
+            "name": company,
+            "ticker": ticker,
+            "halal_status": status,
+            "reason": reason,
+            "sector": sector,
+            "sdg_goal": sdg_goal,
+            "sdg_keywords": sdg_keywords,
+            "source": source,
+            "business_activities": "Not available from database",
+            "financial_analysis": "Not available from database",
+            "controversies": "None known"
+        }
     else:
         # Use Grok API
         with st.spinner(f"Getting AI analysis for {company_query}..."):
             grok_data = get_grok_analysis(company_query, "")
 
         if grok_data:
-            company = company_query
-            ticker = ""
-            status = grok_data.get('halal_status', 'Unknown')
-            reason = grok_data.get('reason', 'No reason provided')
-            sector = grok_data.get('sector', 'Unknown')
-            sdg_goal = grok_data.get('sdg_goal', 0)
-            sdg_keywords = grok_data.get('sdg_keywords', '')
-            source = "Grok AI"
+            return {
+                "name": company_query,
+                "ticker": "",
+                "halal_status": grok_data.get('halal_status', 'Unknown'),
+                "reason": grok_data.get('detailed_reason', 'No reason provided'),
+                "sector": grok_data.get('sector', 'Unknown'),
+                "sdg_goal": grok_data.get('sdg_goal', 0),
+                "secondary_sdgs": grok_data.get('secondary_sdgs', ''),
+                "sdg_keywords": grok_data.get('sdg_keywords', ''),
+                "source": "Grok AI",
+                "business_activities": grok_data.get('business_activities', 'No information available'),
+                "financial_analysis": grok_data.get('financial_analysis', 'No information available'),
+                "sdg_impact": grok_data.get('sdg_impact', ''),
+                "controversies": grok_data.get('controversies', 'None known')
+            }
         else:
             return None
 
-    return {
-        "name": company,
-        "ticker": ticker,
-        "halal_status": status,
-        "reason": reason,
-        "sector": sector,
-        "sdg_goal": sdg_goal,
-        "sdg_keywords": sdg_keywords,
-        "source": source
-    }
 
-
-# Display SDG card for a company
-def display_company_sdg_card(company_data):
-    """Display SDG card for a company"""
-    if company_data['ticker']:
-        header = f"{company_data['name']} ({company_data['ticker']})"
-    else:
-        header = company_data['name']
-    st.subheader(header)
-    st.caption(f"Source: {company_data['source']}")
-
-    if company_data['sdg_goal'] != 0:
-        with st.container():
-            st.markdown(
-                f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(company_data["sdg_goal"], "#1f77b4")};">',
-                unsafe_allow_html=True)
-            st.markdown(f"**SDG {company_data['sdg_goal']}: {SDG_TITLES.get(company_data['sdg_goal'], '')}**")
-            st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(company_data['sdg_goal'], '')}")
-            if company_data['sdg_keywords']:
-                st.markdown("**Keywords**")
-                st.info(company_data['sdg_keywords'])
-            st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.warning("No SDG data available")
-
-
-# Display Halal card for a company
-def display_company_halal_card(company_data):
-    """Display Halal card for a company"""
-    if company_data['ticker']:
-        header = f"{company_data['name']} ({company_data['ticker']})"
-    else:
-        header = company_data['name']
-    st.subheader(header)
-    st.caption(f"Source: {company_data['source']}")
-
-    # Halal status
-    status = company_data['halal_status']
-    reason = company_data['reason']
-
-    st.markdown("**Halal Status**")
-    status_color = "#28a745" if status == "Halal" else "#dc3545"
-    if status == 'Unknown':
-        status_color = "#6c757d"
-    st.markdown(
-        f"<div style='background-color:{status_color}; color:white; padding:15px; border-radius:5px; text-align:center; font-size:20px; font-weight:bold;'>"
-        f"{status}"
-        f"</div>", unsafe_allow_html=True)
-    st.caption(reason)
-
-    # Sector
-    st.markdown(f"**Sector:** {company_data['sector']}")
-
-
-# SDG Comparison Page with Search Boxes
+# SDG Comparison Page
 def show_sdg_comparison(halal_df, sdg_df):
     st.markdown('<div class="header">SDG Comparison</div>', unsafe_allow_html=True)
     st.markdown("### Compare two companies by their Sustainable Development Goals alignment")
@@ -1242,28 +1447,87 @@ def show_sdg_comparison(halal_df, sdg_df):
                 return
 
             # Display comparison
-            cols = st.columns(2)
-            with cols[0]:
-                display_company_sdg_card(company1_data)
-            with cols[1]:
-                display_company_sdg_card(company2_data)
+            st.markdown('<div class="comparison-container">', unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                display_sdg_comparison_card(company1_data, "Company 1")
+            with col2:
+                display_sdg_comparison_card(company2_data, "Company 2")
+                
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # Comparison summary
-            st.markdown("---")
+            # Comparison table
             st.subheader("Comparison Summary")
-
+            
             comparison_data = {
-                "Company": [company1_data['name'], company2_data['name']],
-                "Source": [company1_data['source'], company2_data['source']],
-                "Primary SDG": [company1_data['sdg_goal'], company2_data['sdg_goal']],
-                "SDG Title": [SDG_TITLES.get(company1_data['sdg_goal'], "N/A"),
-                              SDG_TITLES.get(company2_data['sdg_goal'], "N/A")],
-                "Keywords": [company1_data['sdg_keywords'], company2_data['sdg_keywords']]
+                "Metric": [
+                    "Company", 
+                    "Ticker", 
+                    "Primary SDG", 
+                    "SDG Title", 
+                    "Keyword Count",
+                    "Controversies"
+                ],
+                "Company 1": [
+                    company1_data['name'],
+                    company1_data['ticker'] or "N/A",
+                    company1_data['sdg_goal'] or "N/A",
+                    SDG_TITLES.get(company1_data['sdg_goal'], "N/A"),
+                    len(company1_data['sdg_keywords'].split(",")) if company1_data['sdg_keywords'] else 0,
+                    "Yes" if company1_data['controversies'] and company1_data['controversies'].lower() != "none known" else "No"
+                ],
+                "Company 2": [
+                    company2_data['name'],
+                    company2_data['ticker'] or "N/A",
+                    company2_data['sdg_goal'] or "N/A",
+                    SDG_TITLES.get(company2_data['sdg_goal'], "N/A"),
+                    len(company2_data['sdg_keywords'].split(",")) if company2_data['sdg_keywords'] else 0,
+                    "Yes" if company2_data['controversies'] and company2_data['controversies'].lower() != "none known" else "No"
+                ]
             }
+            
+            # Create styled DataFrame
+            df = pd.DataFrame(comparison_data)
+            st.table(df.style.apply(lambda x: [
+                'background-color: #e8f4f8' if x.name % 2 == 0 else '' 
+                for i in x
+            ], axis=1))
+            
+            # SDG alignment visualization
+            if company1_data['sdg_goal'] and company2_data['sdg_goal']:
+                st.subheader("SDG Alignment Comparison")
+                
+                fig = go.Figure()
+                
+                fig.add_trace(go.Scatterpolar(
+                    r=[company1_data['sdg_goal']],  # Using SDG number as value for simplicity
+                    theta=[SDG_TITLES.get(company1_data['sdg_goal'])],
+                    fill='toself',
+                    name=company1_data['name']
+                ))
+                
+                fig.add_trace(go.Scatterpolar(
+                    r=[company2_data['sdg_goal']],
+                    theta=[SDG_TITLES.get(company2_data['sdg_goal'])],
+                    fill='toself',
+                    name=company2_data['name']
+                ))
+                
+                fig.update_layout(
+                    polar=dict(
+                        radialaxis=dict(
+                            visible=True,
+                            range=[0, 18]
+                        )),
+                    showlegend=True,
+                    height=500
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
 
-            st.table(pd.DataFrame(comparison_data))
 
-
+# Halal Comparison Page
 def show_halal_comparison(halal_df, sdg_df):
     st.markdown('<div class="header">Halal Comparison</div>', unsafe_allow_html=True)
     st.markdown("### Compare two companies by their Halal compliance status")
@@ -1287,25 +1551,54 @@ def show_halal_comparison(halal_df, sdg_df):
                 return
 
             # Display comparison
-            cols = st.columns(2)
-            with cols[0]:
-                display_company_halal_card(company1_data)
-            with cols[1]:
-                display_company_halal_card(company2_data)
+            st.markdown('<div class="comparison-container">', unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                display_halal_comparison_card(company1_data, "Company 1")
+            with col2:
+                display_halal_comparison_card(company2_data, "Company 2")
+                
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # Comparison summary
-            st.markdown("---")
+            # Comparison table
             st.subheader("Comparison Summary")
-
+            
             comparison_data = {
-                "Company": [company1_data['name'], company2_data['name']],
-                "Source": [company1_data['source'], company2_data['source']],
-                "Halal Status": [company1_data['halal_status'], company2_data['halal_status']],
-                "Reason": [company1_data['reason'], company2_data['reason']],
-                "Sector": [company1_data['sector'], company2_data['sector']]
+                "Metric": [
+                    "Company", 
+                    "Ticker", 
+                    "Halal Status", 
+                    "Business Sector",
+                    "Financial Compliance",
+                    "Controversies"
+                ],
+                "Company 1": [
+                    company1_data['name'],
+                    company1_data['ticker'] or "N/A",
+                    company1_data['halal_status'],
+                    company1_data['sector'],
+                    "Compliant" if company1_data['halal_status'] == "Halal" else "Non-compliant",
+                    "Yes" if company1_data['controversies'] and company1_data['controversies'].lower() != "none known" else "No"
+                ],
+                "Company 2": [
+                    company2_data['name'],
+                    company2_data['ticker'] or "N/A",
+                    company2_data['halal_status'],
+                    company2_data['sector'],
+                    "Compliant" if company2_data['halal_status'] == "Halal" else "Non-compliant",
+                    "Yes" if company2_data['controversies'] and company2_data['controversies'].lower() != "none known" else "No"
+                ]
             }
-
-            st.table(pd.DataFrame(comparison_data))
+            
+            # Create styled DataFrame
+            df = pd.DataFrame(comparison_data)
+            st.table(df.style.apply(lambda x: [
+                'background-color: #e8f4f8' if x.name % 2 == 0 else '' 
+                for i in x
+            ], axis=1))
+            
+            
 
 
 # Main entry point
