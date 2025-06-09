@@ -422,14 +422,32 @@ def plot_stock_history(ticker):
 def get_grok_analysis(company_name, ticker):
     """Get ethical analysis from Grok API for companies not in the dataset"""
     try:
-        # Get API key from environment variables or Streamlit secrets
-        api_key = os.getenv("GROK_API_KEY")
-        if not api_key:
+        # Get API key with proper error handling
+        api_key = None
+        
+        # First try environment variables
+        if os.getenv("GROK_API_KEY"):
+            api_key = os.getenv("GROK_API_KEY")
+            st.toast("Using API key from environment variables", icon="🔑")
+        
+        # Then try Streamlit secrets
+        elif hasattr(st, "secrets"):
             try:
-                api_key = st.secrets["GROK_API_KEY"]
-            except:
-                st.error("GROK_API_KEY not found in environment variables or Streamlit secrets")
+                if "GROK_API_KEY" in st.secrets:
+                    api_key = st.secrets["GROK_API_KEY"]
+                    st.toast("Using API key from Streamlit secrets", icon="🔒")
+                # Check for nested secrets (common in Streamlit)
+                elif "grok" in st.secrets and "api_key" in st.secrets.grok:
+                    api_key = st.secrets.grok["api_key"]
+                    st.toast("Using API key from nested secrets", icon="🔒")
+            except Exception as secrets_error:
+                st.error(f"Secrets access error: {str(secrets_error)}")
                 return None
+        
+        if not api_key:
+            st.error("GROK_API_KEY not found in environment variables or Streamlit secrets")
+            st.info("Please ensure your key is set in Streamlit's secrets under 'GROK_API_KEY'")
+            return None
 
         # API endpoint and headers
         api_endpoint = "https://api.groq.com/openai/v1/chat/completions"
@@ -438,6 +456,9 @@ def get_grok_analysis(company_name, ticker):
             "Content-Type": "application/json"
         }
 
+        # ... rest of the function remains unchanged ...
+        # [Keep the existing prompt and API call code here]
+        
         # Create the prompt with enhanced detail request
         prompt = f"""
         You are an expert in Islamic finance and sustainable development goals (SDGs). 
@@ -1598,7 +1619,30 @@ def show_halal_comparison(halal_df, sdg_df):
                 for i in x
             ], axis=1))
             
+            # Compliance visualization
+            st.subheader("Compliance Comparison")
             
+            fig = go.Figure(data=[
+                go.Bar(name=company1_data['name'], 
+                       x=['Compliance'], 
+                       y=[1 if company1_data['halal_status'] == "Halal" else 0],
+                       marker_color='#28a745' if company1_data['halal_status'] == "Halal" else '#dc3545'),
+                go.Bar(name=company2_data['name'], 
+                       x=['Compliance'], 
+                       y=[1 if company2_data['halal_status'] == "Halal" else 0],
+                       marker_color='#28a745' if company2_data['halal_status'] == "Halal" else '#dc3545')
+            ])
+            
+            fig.update_layout(
+                barmode='group',
+                height=400,
+                yaxis=dict(
+                    tickvals=[0, 1],
+                    ticktext=["Not Halal", "Halal"]
+                )
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
 
 
 # Main entry point
