@@ -210,6 +210,20 @@ st.markdown("""
         font-size: 12px;
         margin: 3px;
     }
+    .sdg-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin-top: 15px;
+    }
+    .sdg-grid-item {
+        text-align: center;
+        padding: 10px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -456,9 +470,6 @@ def get_grok_analysis(company_name, ticker):
             "Content-Type": "application/json"
         }
 
-        # ... rest of the function remains unchanged ...
-        # [Keep the existing prompt and API call code here]
-        
         # Create the prompt with enhanced detail request
         prompt = f"""
         You are an expert in Islamic finance and sustainable development goals (SDGs). 
@@ -757,11 +768,6 @@ def display_sdg_grok_results(company, ticker, grok_data):
     """Display SDG-specific results from Grok API"""
     st.subheader(f"{company} ({ticker})" if ticker else company)
 
-    with st.container():
-        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-        st.warning("This SDG analysis is AI-generated and may not be 100% accurate")
-        st.markdown('</div>', unsafe_allow_html=True)
-
     # SDG Analysis
     sdg_goal = grok_data.get('sdg_goal', 0)
     secondary_sdgs = grok_data.get('secondary_sdgs', '')
@@ -819,7 +825,7 @@ def display_sdg_grok_results(company, ticker, grok_data):
 
     # Disclaimer
     st.markdown("---")
-    st.caption("ℹ️ This analysis was generated using AI and may contain inaccuracies.")
+    st.caption("ℹ️ This analysis was generated using AI.")
 
 
 # Enhanced Halal Analysis Display
@@ -986,12 +992,6 @@ def show_stock_analysis(halal_df, sdg_df):
                     save_to_sdg_excel(company, ticker, grok_data):
                 st.success("Company data saved to database for future reference")
         else:
-            # Fallback to database info if Grok fails
-            with st.container():
-                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                st.warning("Using database information only. AI analysis failed.")
-                st.markdown('</div>', unsafe_allow_html=True)
-            
             # Display basic Halal analysis from database
             display_halal_analysis(
                 company=company,
@@ -1027,15 +1027,9 @@ def show_stock_analysis(halal_df, sdg_df):
                                 
                         st.markdown('</div>', unsafe_allow_html=True)
                 else:
-                    with st.container():
-                        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                        st.warning("No SDG data available")
-                        st.markdown('</div>', unsafe_allow_html=True)
+                    st.info("No SDG data available")
             else:
-                with st.container():
-                    st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                    st.warning("SDG data not available")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                st.info("SDG data not available")
 
         # Financial metrics and chart
         st.markdown("---")
@@ -1077,11 +1071,6 @@ def show_stock_analysis(halal_df, sdg_df):
     else:
         if not company_name and ticker_symbol:
             company_name = ticker_symbol  # Use ticker as company name if none provided
-
-        with st.container():
-            st.markdown('<div class="info-card">', unsafe_allow_html=True)
-            st.warning("Company not found in our database. Using AI analysis...")
-            st.markdown('</div>', unsafe_allow_html=True)
 
         # Get analysis from Grok API
         with st.spinner("Analyzing company with AI..."):
@@ -1150,12 +1139,6 @@ def show_sdg_analysis(halal_df, sdg_df):
                             save_to_sdg_excel(company, ticker, grok_data):
                         st.success("Company data saved to database for future reference")
                 else:
-                    # Fallback to database info if Grok fails
-                    with st.container():
-                        st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                        st.warning("Using database information only. AI analysis failed.")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
                     # Show SDG data for found company
                     st.subheader(f"{company} ({ticker})")
 
@@ -1180,18 +1163,10 @@ def show_sdg_analysis(halal_df, sdg_df):
                                     
                             st.markdown('</div>', unsafe_allow_html=True)
                     else:
-                        with st.container():
-                            st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                            st.warning("No SDG data available for this company")
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        st.info("No SDG data available for this company")
             else:
                 if not company_name and ticker_symbol:
                     company_name = ticker_symbol
-
-                with st.container():
-                    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-                    st.warning("Company not found in database. Using AI analysis...")
-                    st.markdown('</div>', unsafe_allow_html=True)
 
                 with st.spinner("Analyzing with AI..."):
                     grok_data = get_grok_analysis(company_name, ticker_symbol)
@@ -1280,13 +1255,10 @@ def show_sdg_analysis(halal_df, sdg_df):
                 else:
                     st.info("No SDG keywords found to visualize")
         else:
-            with st.container():
-                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                st.warning("No SDG alignment detected in the document")
-                st.markdown('</div>', unsafe_allow_html=True)
+            st.info("No SDG alignment detected in the document")
 
 
-# Enhanced comparison display functions
+# Enhanced SDG Comparison Display
 def display_sdg_comparison_card(company_data, title):
     """Display SDG comparison card with enhanced visuals"""
     with st.container():
@@ -1299,6 +1271,7 @@ def display_sdg_comparison_card(company_data, title):
         st.caption(f"Source: {company_data['source']}")
         
         if company_data['sdg_goal'] != 0:
+            # Main SDG card
             with st.container():
                 st.markdown(
                     f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(company_data["sdg_goal"], "#1f77b4")};">',
@@ -1306,28 +1279,35 @@ def display_sdg_comparison_card(company_data, title):
                 st.markdown(f"### SDG {company_data['sdg_goal']}: {SDG_TITLES.get(company_data['sdg_goal'], '')}")
                 st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(company_data['sdg_goal'], '')}")
                 
-                if company_data['sdg_keywords']:
-                    st.markdown("**Keywords**")
+                if company_data.get('sdg_impact', ''):
+                    st.markdown("**Impact Analysis:**")
+                    st.info(f"{company_data['sdg_impact']}")
+                    
+                if company_data.get('sdg_keywords', ''):
+                    st.markdown("**Keywords:**")
                     keywords = company_data['sdg_keywords'].split(",")
                     for kw in keywords:
                         st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
-                
+                        
                 st.markdown('</div>', unsafe_allow_html=True)
-                
+
+            # Secondary SDGs grid
             if company_data.get('secondary_sdgs', ''):
-                st.markdown("**Additional SDGs:**")
+                st.subheader("Secondary SDGs")
                 secondary_list = [int(s.strip()) for s in company_data['secondary_sdgs'].split(",") if s.strip().isdigit()]
+                
+                st.markdown('<div class="sdg-grid">', unsafe_allow_html=True)
                 for sdg in secondary_list:
-                    st.markdown(f'<div class="sdg-badge" style="background-color:{SDG_COLORS.get(sdg)}">{sdg}</div> {SDG_TITLES.get(sdg)}', unsafe_allow_html=True)
-        else:
-            with st.container():
-                st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-                st.warning("No SDG data available")
+                    st.markdown(
+                        f'<div class="sdg-grid-item" style="background-color:{SDG_COLORS.get(sdg)}">'
+                        f'SDG {sdg}<br>{SDG_TITLES.get(sdg)}'
+                        f'</div>', 
+                        unsafe_allow_html=True
+                    )
                 st.markdown('</div>', unsafe_allow_html=True)
                 
-        if company_data.get('sdg_impact', ''):
-            st.markdown("**Impact Analysis:**")
-            st.info(company_data['sdg_impact'])
+        else:
+            st.info("No SDG data available")
             
         if company_data.get('controversies', '') and company_data['controversies'].lower() != "none known":
             st.markdown("**Controversies:**")
@@ -1337,44 +1317,58 @@ def display_sdg_comparison_card(company_data, title):
                 st.markdown('</div>', unsafe_allow_html=True)
 
 
+# Enhanced Halal Comparison Display
 def display_halal_comparison_card(company_data, title):
     """Display Halal comparison card with enhanced visuals"""
+    status = company_data['halal_status']
+    status_color = "#28a745" if status == "Halal" else "#dc3545"
+    if status == 'Unknown':
+        status_color = "#6c757d"
+        compliance_level = 50
+    else:
+        compliance_level = 85 if status == "Halal" else 25
+
     with st.container():
         st.markdown(f"<h3>{title}</h3>", unsafe_allow_html=True)
         st.markdown(f"<h4>{company_data['name']}</h4>", unsafe_allow_html=True)
-        
-        if company_data['ticker']:
-            st.caption(f"Ticker: {company_data['ticker']}")
+
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            # Radial chart
+            st.markdown(f"""
+            <div class="halal-radial" style="background: conic-gradient({status_color} 0% {compliance_level}%, #e9ecef {compliance_level}% 100%);">
+                <div class="radial-value">{compliance_level}%</div>
+            </div>
+            <div style="text-align:center; margin-top:10px; font-weight:bold; color:{status_color}">
+                {status}
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col2:
+            st.markdown(f"**Sector:** {company_data.get('sector', 'Unknown')}")
+            st.markdown(f"**Source:** {company_data['source']}")
+            if company_data['ticker']:
+                st.markdown(f"**Ticker:** {company_data['ticker']}")
+
+        # Business Activities
+        with st.expander("Business Activities", expanded=False):
+            st.info(company_data.get('business_activities', 'No information available'))
+
+        # Financial Compliance
+        with st.expander("Financial Compliance", expanded=False):
+            st.info(company_data.get('financial_analysis', 'No information available'))
             
-        st.caption(f"Source: {company_data['source']}")
-        
-        # Halal status
-        status = company_data['halal_status']
-        status_color = "#28a745" if status == "Halal" else "#dc3545"
-        if status == 'Unknown':
-            status_color = "#6c757d"
-            
-        st.markdown("**Halal Status**")
-        st.markdown(
-            f"<div style='background-color:{status_color}; color:white; padding:15px; border-radius:5px; text-align:center; font-size:20px; font-weight:bold;'>"
-            f"{status}"
-            f"</div>", unsafe_allow_html=True)
-        
-        st.markdown("**Reason:**")
-        st.info(company_data['reason'])
-        
-        st.markdown("**Business Activities:**")
-        st.info(company_data.get('business_activities', 'No information available'))
-        
-        st.markdown("**Financial Compliance:**")
-        st.info(company_data.get('financial_analysis', 'No information available'))
-        
+        # Compliance Reasoning
+        with st.expander("Compliance Reasoning", expanded=False):
+            st.info(company_data.get('reason', 'No reason provided'))
+
+        # Controversies
         if company_data.get('controversies', '') and company_data['controversies'].lower() != "none known":
-            st.markdown("**Controversies:**")
-            with st.container():
-                st.markdown('<div class="error-card">', unsafe_allow_html=True)
-                st.error(company_data['controversies'])
-                st.markdown('</div>', unsafe_allow_html=True)
+            with st.expander("Controversies", expanded=False):
+                with st.container():
+                    st.markdown('<div class="error-card">', unsafe_allow_html=True)
+                    st.error(company_data['controversies'])
+                    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # Helper function to get company data from DB or Grok
@@ -1447,7 +1441,7 @@ def get_company_data(halal_df, sdg_df, company_query):
             return None
 
 
-# SDG Comparison Page
+# Enhanced SDG Comparison Page
 def show_sdg_comparison(halal_df, sdg_df):
     st.markdown('<div class="header">SDG Comparison</div>', unsafe_allow_html=True)
     st.markdown("### Compare two companies by their Sustainable Development Goals alignment")
@@ -1480,78 +1474,69 @@ def show_sdg_comparison(halal_df, sdg_df):
                 display_sdg_comparison_card(company2_data, "Company 2")
                 
             st.markdown('</div>', unsafe_allow_html=True)
-
-            # Comparison table
-            st.subheader("Comparison Summary")
             
-            comparison_data = {
-                "Metric": [
-                    "Company", 
-                    "Ticker", 
-                    "Primary SDG", 
-                    "SDG Title", 
-                    "Keyword Count",
-                    "Controversies"
-                ],
-                "Company 1": [
-                    company1_data['name'],
-                    company1_data['ticker'] or "N/A",
-                    company1_data['sdg_goal'] or "N/A",
-                    SDG_TITLES.get(company1_data['sdg_goal'], "N/A"),
-                    len(company1_data['sdg_keywords'].split(",")) if company1_data['sdg_keywords'] else 0,
-                    "Yes" if company1_data['controversies'] and company1_data['controversies'].lower() != "none known" else "No"
-                ],
-                "Company 2": [
-                    company2_data['name'],
-                    company2_data['ticker'] or "N/A",
-                    company2_data['sdg_goal'] or "N/A",
-                    SDG_TITLES.get(company2_data['sdg_goal'], "N/A"),
-                    len(company2_data['sdg_keywords'].split(",")) if company2_data['sdg_keywords'] else 0,
-                    "Yes" if company2_data['controversies'] and company2_data['controversies'].lower() != "none known" else "No"
-                ]
-            }
+            # Comparison visualization
+            st.subheader("SDG Alignment Comparison")
             
-            # Create styled DataFrame
-            df = pd.DataFrame(comparison_data)
-            st.table(df.style.apply(lambda x: [
-                'background-color: #e8f4f8' if x.name % 2 == 0 else '' 
-                for i in x
-            ], axis=1))
-            
-            # SDG alignment visualization
-            if company1_data['sdg_goal'] and company2_data['sdg_goal']:
-                st.subheader("SDG Alignment Comparison")
+            if company1_data['sdg_goal'] != 0 or company2_data['sdg_goal'] != 0:
+                # Prepare data for visualization
+                data = {
+                    "SDG": [],
+                    "Company": [],
+                    "Value": []
+                }
                 
-                fig = go.Figure()
+                # Add primary SDG
+                if company1_data['sdg_goal'] != 0:
+                    data["SDG"].append(f"SDG {company1_data['sdg_goal']}")
+                    data["Company"].append(company1_data['name'])
+                    data["Value"].append(10)  # Higher value for primary
+                    
+                if company2_data['sdg_goal'] != 0:
+                    data["SDG"].append(f"SDG {company2_data['sdg_goal']}")
+                    data["Company"].append(company2_data['name'])
+                    data["Value"].append(10)
+                    
+                # Add secondary SDGs
+                if company1_data.get('secondary_sdgs', ''):
+                    secondary_list = [int(s.strip()) for s in company1_data['secondary_sdgs'].split(",") if s.strip().isdigit()]
+                    for sdg in secondary_list:
+                        data["SDG"].append(f"SDG {sdg}")
+                        data["Company"].append(company1_data['name'])
+                        data["Value"].append(5)  # Lower value for secondary
+                        
+                if company2_data.get('secondary_sdgs', ''):
+                    secondary_list = [int(s.strip()) for s in company2_data['secondary_sdgs'].split(",") if s.strip().isdigit()]
+                    for sdg in secondary_list:
+                        data["SDG"].append(f"SDG {sdg}")
+                        data["Company"].append(company2_data['name'])
+                        data["Value"].append(5)
                 
-                fig.add_trace(go.Scatterpolar(
-                    r=[company1_data['sdg_goal']],  # Using SDG number as value for simplicity
-                    theta=[SDG_TITLES.get(company1_data['sdg_goal'])],
-                    fill='toself',
-                    name=company1_data['name']
-                ))
+                df = pd.DataFrame(data)
                 
-                fig.add_trace(go.Scatterpolar(
-                    r=[company2_data['sdg_goal']],
-                    theta=[SDG_TITLES.get(company2_data['sdg_goal'])],
-                    fill='toself',
-                    name=company2_data['name']
-                ))
-                
-                fig.update_layout(
-                    polar=dict(
-                        radialaxis=dict(
-                            visible=True,
-                            range=[0, 18]
-                        )),
-                    showlegend=True,
-                    height=500
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
+                if not df.empty:
+                    fig = px.bar(
+                        df, 
+                        x="SDG", 
+                        y="Value", 
+                        color="Company", 
+                        barmode="group",
+                        color_discrete_sequence=["#1f77b4", "#ff7f0e"],
+                        title="SDG Alignment Comparison"
+                    )
+                    fig.update_layout(
+                        xaxis_title="Sustainable Development Goals",
+                        yaxis_title="Alignment Level",
+                        template="plotly_white"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No SDG data available for visualization")
+            else:
+                st.info("No SDG data available for comparison")
 
 
-# Halal Comparison Page
+# Enhanced Halal Comparison Page
 def show_halal_comparison(halal_df, sdg_df):
     st.markdown('<div class="header">Halal Comparison</div>', unsafe_allow_html=True)
     st.markdown("### Compare two companies by their Halal compliance status")
@@ -1584,65 +1569,58 @@ def show_halal_comparison(halal_df, sdg_df):
                 display_halal_comparison_card(company2_data, "Company 2")
                 
             st.markdown('</div>', unsafe_allow_html=True)
-
-            # Comparison table
-            st.subheader("Comparison Summary")
             
-            comparison_data = {
-                "Metric": [
-                    "Company", 
-                    "Ticker", 
-                    "Halal Status", 
-                    "Business Sector",
-                    "Financial Compliance",
-                    "Controversies"
-                ],
-                "Company 1": [
-                    company1_data['name'],
-                    company1_data['ticker'] or "N/A",
-                    company1_data['halal_status'],
-                    company1_data['sector'],
-                    "Compliant" if company1_data['halal_status'] == "Halal" else "Non-compliant",
-                    "Yes" if company1_data['controversies'] and company1_data['controversies'].lower() != "none known" else "No"
-                ],
-                "Company 2": [
-                    company2_data['name'],
-                    company2_data['ticker'] or "N/A",
-                    company2_data['halal_status'],
-                    company2_data['sector'],
-                    "Compliant" if company2_data['halal_status'] == "Halal" else "Non-compliant",
-                    "Yes" if company2_data['controversies'] and company2_data['controversies'].lower() != "none known" else "No"
+            # Compliance comparison visualization
+            st.subheader("Compliance Comparison")
+            
+            # Prepare data
+            data = {
+                "Company": [company1_data['name'], company2_data['name']],
+                "Halal Status": [company1_data['halal_status'], company2_data['halal_status']],
+                "Compliance Level": [
+                    85 if company1_data['halal_status'] == "Halal" else 25,
+                    85 if company2_data['halal_status'] == "Halal" else 25
                 ]
             }
             
-            # Create styled DataFrame
-            df = pd.DataFrame(comparison_data)
-            st.table(df.style.apply(lambda x: [
-                'background-color: #e8f4f8' if x.name % 2 == 0 else '' 
-                for i in x
-            ], axis=1))
+            # Create gauge charts
+            fig = go.Figure()
             
-            # Compliance visualization
-            st.subheader("Compliance Comparison")
+            fig.add_trace(go.Indicator(
+                mode = "gauge+number",
+                value = data["Compliance Level"][0],
+                title = {'text': company1_data['name']},
+                domain = {'x': [0, 0.45], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#1f77b4"},
+                    'steps' : [
+                        {'range': [0, 33], 'color': "#dc3545"},
+                        {'range': [33, 66], 'color': "#ffc107"},
+                        {'range': [66, 100], 'color': "#28a745"}
+                    ]
+                }
+            ))
             
-            fig = go.Figure(data=[
-                go.Bar(name=company1_data['name'], 
-                       x=['Compliance'], 
-                       y=[1 if company1_data['halal_status'] == "Halal" else 0],
-                       marker_color='#28a745' if company1_data['halal_status'] == "Halal" else '#dc3545'),
-                go.Bar(name=company2_data['name'], 
-                       x=['Compliance'], 
-                       y=[1 if company2_data['halal_status'] == "Halal" else 0],
-                       marker_color='#28a745' if company2_data['halal_status'] == "Halal" else '#dc3545')
-            ])
+            fig.add_trace(go.Indicator(
+                mode = "gauge+number",
+                value = data["Compliance Level"][1],
+                title = {'text': company2_data['name']},
+                domain = {'x': [0.55, 1], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#ff7f0e"},
+                    'steps' : [
+                        {'range': [0, 33], 'color': "#dc3545"},
+                        {'range': [33, 66], 'color': "#ffc107"},
+                        {'range': [66, 100], 'color': "#28a745"}
+                    ]
+                }
+            ))
             
             fig.update_layout(
-                barmode='group',
-                height=400,
-                yaxis=dict(
-                    tickvals=[0, 1],
-                    ticktext=["Not Halal", "Halal"]
-                )
+                title="Halal Compliance Level",
+                height=400
             )
             
             st.plotly_chart(fig, use_container_width=True)
