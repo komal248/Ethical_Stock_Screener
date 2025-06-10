@@ -1403,9 +1403,10 @@ def get_company_data(halal_df, sdg_df, company_query):
         else:
             sdg_goal = 0
             sdg_keywords = ""
-
-    
         
+        # Fixed: Define source variable here
+        source = "Database"
+
         return {
             "name": company,
             "ticker": ticker,
@@ -1417,7 +1418,9 @@ def get_company_data(halal_df, sdg_df, company_query):
             "source": source,
             "business_activities": "Not available from database",
             "financial_analysis": "Not available from database",
-            "controversies": "None known"
+            "controversies": "",
+            "secondary_sdgs": "",
+            "sdg_impact": ""
         }
     else:
         # Use Grok API
