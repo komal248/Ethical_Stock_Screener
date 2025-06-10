@@ -935,6 +935,7 @@ def show_home(halal_df, sdg_df):
                 for company in companies:
                     st.markdown(f"- {company}")
 
+
 def show_stock_analysis(halal_df, sdg_df):
     st.markdown('<div class="header">Stock Analysis</div>', unsafe_allow_html=True)
     st.markdown("### Detailed analysis of individual stocks")
@@ -1268,8 +1269,6 @@ def display_sdg_comparison_card(company_data, title):
         if company_data['ticker']:
             st.caption(f"Ticker: {company_data['ticker']}")
             
-        st.caption(f"Source: {company_data['source']}")
-        
         if company_data['sdg_goal'] != 0:
             # Main SDG card
             with st.container():
@@ -1346,7 +1345,6 @@ def display_halal_comparison_card(company_data, title):
 
         with col2:
             st.markdown(f"**Sector:** {company_data.get('sector', 'Unknown')}")
-            st.markdown(f"**Source:** {company_data['source']}")
             if company_data['ticker']:
                 st.markdown(f"**Ticker:** {company_data['ticker']}")
 
@@ -1397,9 +1395,6 @@ def get_company_data(halal_df, sdg_df, company_query):
         else:
             sdg_goal = 0
             sdg_keywords = ""
-        
-        # Fixed: Define source variable here
-        source = "Database"
 
         return {
             "name": company,
@@ -1409,7 +1404,6 @@ def get_company_data(halal_df, sdg_df, company_query):
             "sector": sector,
             "sdg_goal": sdg_goal,
             "sdg_keywords": sdg_keywords,
-            "source": source,
             "business_activities": "Not available from database",
             "financial_analysis": "Not available from database",
             "controversies": "",
@@ -1431,7 +1425,6 @@ def get_company_data(halal_df, sdg_df, company_query):
                 "sdg_goal": grok_data.get('sdg_goal', 0),
                 "secondary_sdgs": grok_data.get('secondary_sdgs', ''),
                 "sdg_keywords": grok_data.get('sdg_keywords', ''),
-                "source": "Grok AI",
                 "business_activities": grok_data.get('business_activities', 'No information available'),
                 "financial_analysis": grok_data.get('financial_analysis', 'No information available'),
                 "sdg_impact": grok_data.get('sdg_impact', ''),
@@ -1439,6 +1432,124 @@ def get_company_data(halal_df, sdg_df, company_query):
             }
         else:
             return None
+
+
+# Enhanced Halal Comparison Page
+def show_halal_comparison(halal_df, sdg_df):
+    st.markdown('<div class="header">Halal Comparison</div>', unsafe_allow_html=True)
+    st.markdown("### Compare two companies by their Halal compliance status")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        company1 = st.text_input("Company 1", placeholder="Enter company name or ticker", key="halal1")
+    with col2:
+        company2 = st.text_input("Company 2", placeholder="Enter company name or ticker", key="halal2")
+
+    if st.button("Compare Companies", key="halal_compare_btn"):
+        if not company1 or not company2:
+            st.info("Please enter two companies to compare")
+        else:
+            # Get company data with AI enhancements
+            company1_data = get_company_data(halal_df, sdg_df, company1)
+            company2_data = get_company_data(halal_df, sdg_df, company2)
+
+            if not company1_data or not company2_data:
+                st.error("Could not get data for one or both companies")
+                return
+
+            # For companies in database, get AI details
+            def enhance_with_ai(company_data):
+                # Skip if already has AI details
+                if company_data.get('business_activities', '') != "Not available from database":
+                    return company_data
+                    
+                # Get AI analysis
+                with st.spinner(f"Getting AI details for {company_data['name']}..."):
+                    grok_data = get_grok_analysis(company_data['name'], company_data['ticker'])
+
+                if grok_data:
+                    # Merge AI data with existing data
+                    return {
+                        **company_data,
+                        "business_activities": grok_data.get('business_activities', 'No information available'),
+                        "financial_analysis": grok_data.get('financial_analysis', 'No information available'),
+                        "controversies": grok_data.get('controversies', 'None known'),
+                        "sdg_goal": grok_data.get('sdg_goal', 0),
+                        "secondary_sdgs": grok_data.get('secondary_sdgs', ''),
+                        "sdg_keywords": grok_data.get('sdg_keywords', ''),
+                        "sdg_impact": grok_data.get('sdg_impact', '')
+                    }
+                return company_data
+
+            # Enhance both companies with AI details
+            company1_data = enhance_with_ai(company1_data)
+            company2_data = enhance_with_ai(company2_data)
+
+            # Display comparison
+            st.markdown('<div class="comparison-container">', unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                display_halal_comparison_card(company1_data, "Company 1")
+            with col2:
+                display_halal_comparison_card(company2_data, "Company 2")
+                
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Compliance comparison visualization
+            st.subheader("Compliance Comparison")
+            
+            # Prepare data
+            data = {
+                "Company": [company1_data['name'], company2_data['name']],
+                "Halal Status": [company1_data['halal_status'], company2_data['halal_status']],
+                "Compliance Level": [
+                    85 if company1_data['halal_status'] == "Halal" else 25,
+                    85 if company2_data['halal_status'] == "Halal" else 25
+                ]
+            }
+            
+            # Create gauge charts
+            fig = go.Figure()
+            
+            fig.add_trace(go.Indicator(
+                mode = "gauge+number",
+                value = data["Compliance Level"][0],
+                title = {'text': company1_data['name']},
+                domain = {'x': [0, 0.45], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#1f77b4"},
+                    'steps' : [
+                        {'range': [0, 33], 'color': "#dc3545"},
+                        {'range': [33, 66], 'color': "#ffc107"},
+                        {'range': [66, 100], 'color': "#28a745"}
+                    ]
+                }
+            ))
+            
+            fig.add_trace(go.Indicator(
+                mode = "gauge+number",
+                value = data["Compliance Level"][1],
+                title = {'text': company2_data['name']},
+                domain = {'x': [0.55, 1], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#ff7f0e"},
+                    'steps' : [
+                        {'range': [0, 33], 'color': "#dc3545"},
+                        {'range': [33, 66], 'color': "#ffc107"},
+                        {'range': [66, 100], 'color': "#28a745"}
+                    ]
+                }
+            ))
+            
+            fig.update_layout(
+                title="Halal Compliance Level",
+                height=400
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
 
 
 # Enhanced SDG Comparison Page
@@ -1534,96 +1645,6 @@ def show_sdg_comparison(halal_df, sdg_df):
                     st.info("No SDG data available for visualization")
             else:
                 st.info("No SDG data available for comparison")
-
-
-# Enhanced Halal Comparison Page
-def show_halal_comparison(halal_df, sdg_df):
-    st.markdown('<div class="header">Halal Comparison</div>', unsafe_allow_html=True)
-    st.markdown("### Compare two companies by their Halal compliance status")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        company1 = st.text_input("Company 1", placeholder="Enter company name or ticker", key="halal1")
-    with col2:
-        company2 = st.text_input("Company 2", placeholder="Enter company name or ticker", key="halal2")
-
-    if st.button("Compare Companies", key="halal_compare_btn"):
-        if not company1 or not company2:
-            st.info("Please enter two companies to compare")
-        else:
-            # Get company data
-            company1_data = get_company_data(halal_df, sdg_df, company1)
-            company2_data = get_company_data(halal_df, sdg_df, company2)
-
-            if not company1_data or not company2_data:
-                st.error("Could not get data for one or both companies")
-                return
-
-            # Display comparison
-            st.markdown('<div class="comparison-container">', unsafe_allow_html=True)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                display_halal_comparison_card(company1_data, "Company 1")
-            with col2:
-                display_halal_comparison_card(company2_data, "Company 2")
-                
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Compliance comparison visualization
-            st.subheader("Compliance Comparison")
-            
-            # Prepare data
-            data = {
-                "Company": [company1_data['name'], company2_data['name']],
-                "Halal Status": [company1_data['halal_status'], company2_data['halal_status']],
-                "Compliance Level": [
-                    85 if company1_data['halal_status'] == "Halal" else 25,
-                    85 if company2_data['halal_status'] == "Halal" else 25
-                ]
-            }
-            
-            # Create gauge charts
-            fig = go.Figure()
-            
-            fig.add_trace(go.Indicator(
-                mode = "gauge+number",
-                value = data["Compliance Level"][0],
-                title = {'text': company1_data['name']},
-                domain = {'x': [0, 0.45], 'y': [0, 1]},
-                gauge = {
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': "#1f77b4"},
-                    'steps' : [
-                        {'range': [0, 33], 'color': "#dc3545"},
-                        {'range': [33, 66], 'color': "#ffc107"},
-                        {'range': [66, 100], 'color': "#28a745"}
-                    ]
-                }
-            ))
-            
-            fig.add_trace(go.Indicator(
-                mode = "gauge+number",
-                value = data["Compliance Level"][1],
-                title = {'text': company2_data['name']},
-                domain = {'x': [0.55, 1], 'y': [0, 1]},
-                gauge = {
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': "#ff7f0e"},
-                    'steps' : [
-                        {'range': [0, 33], 'color': "#dc3545"},
-                        {'range': [33, 66], 'color': "#ffc107"},
-                        {'range': [66, 100], 'color': "#28a745"}
-                    ]
-                }
-            ))
-            
-            fig.update_layout(
-                title="Halal Compliance Level",
-                height=400
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
 
 
 # Main entry point
