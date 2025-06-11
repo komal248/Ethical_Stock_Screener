@@ -517,12 +517,12 @@ def get_grok_analysis(company_name, ticker):
             response_data = response.json()
             content = response_data['choices'][0]['message']['content']
             
-            # FIX: Improved JSON parsing logic
+            # FIX: Handle trailing notes/comments after JSON
             try:
-                # First try to parse the entire content as JSON
+                # Try to parse directly first
                 return json.loads(content)
             except json.JSONDecodeError:
-                # If that fails, look for the JSON object within the content
+                # If direct parse fails, look for JSON boundaries
                 try:
                     # Find the first { and last } to extract the JSON
                     start_index = content.find('{')
@@ -533,6 +533,13 @@ def get_grok_analysis(company_name, ticker):
                         return None
                         
                     json_str = content[start_index:end_index]
+                    
+                    # FIX: Remove any trailing text after JSON
+                    if not json_str.strip().endswith('}'):
+                        # Find last valid closing brace
+                        end_index = json_str.rfind('}') + 1
+                        json_str = json_str[:end_index]
+                    
                     return json.loads(json_str)
                 except Exception as e:
                     st.error(f"Error parsing Grok response: {str(e)}")
