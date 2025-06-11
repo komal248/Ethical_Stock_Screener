@@ -824,6 +824,59 @@ def display_halal_analysis(company, ticker, status, reason, business_activities,
                 st.markdown('</div>', unsafe_allow_html=True)
 
 
+# Display SDG results from Grok API
+def display_sdg_grok_results(company, ticker, grok_data):
+    """Display SDG analysis from Grok API results"""
+    st.subheader("SDG Analysis")
+    
+    if grok_data.get('sdg_goal', 0) != 0:
+        goal = grok_data['sdg_goal']
+        title = SDG_TITLES.get(goal, f"SDG {goal}")
+        description = SDG_DESCRIPTIONS.get(goal, "")
+        color = SDG_COLORS.get(goal, "#1f77b4")
+        
+        with st.container():
+            st.markdown(
+                f'<div class="sdg-card" style="border-left: 5px solid {color};">',
+                unsafe_allow_html=True)
+            st.markdown(f"### SDG {goal}: {title}")
+            st.markdown(f"**Description:** {description}")
+            
+            # Impact analysis
+            impact = grok_data.get('sdg_impact', '')
+            if impact:
+                st.markdown("**Impact Analysis:**")
+                st.info(impact)
+            
+            # Keywords
+            keywords = grok_data.get('sdg_keywords', '')
+            if keywords:
+                st.markdown("**Keywords:**")
+                keywords_list = keywords.split(",")
+                for kw in keywords_list:
+                    st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
+            
+            # Secondary SDGs
+            secondary_sdgs = grok_data.get('secondary_sdgs', '')
+            if secondary_sdgs:
+                st.markdown("**Secondary SDGs:**")
+                secondary_list = [s.strip() for s in secondary_sdgs.split(",") if s.strip().isdigit()]
+                st.markdown('<div class="sdg-grid">', unsafe_allow_html=True)
+                for sdg in secondary_list:
+                    sdg_num = int(sdg)
+                    st.markdown(
+                        f'<div class="sdg-grid-item" style="background-color:{SDG_COLORS.get(sdg_num, "#1f77b4")}">'
+                        f'SDG {sdg_num}<br>{SDG_TITLES.get(sdg_num, "")}'
+                        f'</div>', 
+                        unsafe_allow_html=True
+                    )
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("No SDG data available")
+
+
 # In app.py main function
 def main():
     halal_df, sdg_df = load_data()
@@ -878,8 +931,11 @@ def show_home(halal_df, sdg_df):
 
             # Show companies associated with this SDG
             with st.expander(f"Companies Focused on SDG {goal}"):
-                for company in companies:
-                    st.markdown(f"- {company}")
+                if companies:
+                    for company in companies:
+                        st.markdown(f"- {company}")
+                else:
+                    st.info("No companies found for this SDG")
 
 
 def show_stock_analysis(halal_df, sdg_df):
@@ -963,8 +1019,8 @@ def show_stock_analysis(halal_df, sdg_df):
                         st.markdown(
                             f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
                             unsafe_allow_html=True)
-                        st.markdown(f"### SDG {goal}: {SDG_TITLES[goal]}")
-                        st.markdown(f"**Description:** {SDG_DESCRIPTIONS[goal]}")
+                        st.markdown(f"### SDG {goal}: {SDG_TITLES.get(goal, '')}")
+                        st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(goal, '')}")
                         
                         if keywords:
                             st.markdown("**Keywords:**")
@@ -1079,6 +1135,7 @@ def show_sdg_analysis(halal_df, sdg_df):
                     grok_data = get_grok_analysis(company, ticker)
 
                 if grok_data:
+                    # Display enhanced SDG analysis
                     display_sdg_grok_results(company, ticker, grok_data)
                     
                     # Save to Excel
@@ -1088,29 +1145,32 @@ def show_sdg_analysis(halal_df, sdg_df):
                 else:
                     # Show SDG data for found company
                     st.subheader(f"{company} ({ticker})")
-
+                    
                     # Get SDG data
-                    sdg_data = sdg_df[sdg_df['Company Name'].str.strip().str.lower() == company.strip().lower()]
-                    if not sdg_data.empty:
-                        goal = sdg_data['Primary SDG'].iloc[0]
-                        keywords = sdg_data['SDG Keywords'].iloc[0]
+                    if not sdg_df.empty and 'Company Name' in sdg_df.columns and 'Primary SDG' in sdg_df.columns:
+                        sdg_data = sdg_df[sdg_df['Company Name'].str.strip().str.lower() == company.strip().lower()]
+                        if not sdg_data.empty:
+                            goal = sdg_data['Primary SDG'].iloc[0]
+                            keywords = sdg_data['SDG Keywords'].iloc[0]
 
-                        with st.container():
-                            st.markdown(
-                                f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
-                                unsafe_allow_html=True)
-                            st.markdown(f"### SDG {goal}: {SDG_TITLES[goal]}")
-                            st.markdown(f"**Description:** {SDG_DESCRIPTIONS[goal]}")
-                            
-                            if keywords:
-                                st.markdown("**Keywords:**")
-                                keywords_list = keywords.split(",")
-                                for kw in keywords_list:
-                                    st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
-                                    
-                            st.markdown('</div>', unsafe_allow_html=True)
+                            with st.container():
+                                st.markdown(
+                                    f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
+                                    unsafe_allow_html=True)
+                                st.markdown(f"### SDG {goal}: {SDG_TITLES.get(goal, '')}")
+                                st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(goal, '')}")
+                                
+                                if keywords:
+                                    st.markdown("**Keywords:**")
+                                    keywords_list = keywords.split(",")
+                                    for kw in keywords_list:
+                                        st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
+                                        
+                                st.markdown('</div>', unsafe_allow_html=True)
+                        else:
+                            st.info("No SDG data available for this company")
                     else:
-                        st.info("No SDG data available for this company")
+                        st.info("SDG data not available")
             else:
                 if not company_name and ticker_symbol:
                     company_name = ticker_symbol
@@ -1169,12 +1229,12 @@ def show_sdg_analysis(halal_df, sdg_df):
                 keywords = sdg_info["keywords"]
                 count = sdg_info["count"]
 
-                with st.expander(f"SDG {sdg}: {SDG_TITLES[sdg]} - {count} keywords found", expanded=True):
+                with st.expander(f"SDG {sdg}: {SDG_TITLES.get(sdg, '')} - {count} keywords found", expanded=True):
                     with st.container():
                         st.markdown(
                             f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg, "#1f77b4")};">',
                             unsafe_allow_html=True)
-                        st.markdown(f"**Description:** {SDG_DESCRIPTIONS[sdg]}")
+                        st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(sdg, '')}")
                         st.markdown(f"**Keyword Count:** {count}")
                         st.markdown(f"**Keywords Found:**")
                         keywords_list = keywords.split(", ")
@@ -1406,7 +1466,7 @@ def show_halal_comparison(halal_df, sdg_df):
             # For companies in database, get AI details
             def enhance_with_ai(company_data):
                 # Skip if already has AI details
-                if company_data.get('business_activities', '') != "Not available from database":
+                if "Not available from database" not in company_data.get('business_activities', ''):
                     return company_data
                     
                 # Get AI analysis
@@ -1446,21 +1506,15 @@ def show_halal_comparison(halal_df, sdg_df):
             st.subheader("Compliance Comparison")
             
             # Prepare data
-            data = {
-                "Company": [company1_data['name'], company2_data['name']],
-                "Halal Status": [company1_data['halal_status'], company2_data['halal_status']],
-                "Compliance Level": [
-                    85 if company1_data['halal_status'] == "Halal" else 25,
-                    85 if company2_data['halal_status'] == "Halal" else 25
-                ]
-            }
+            compliance_level1 = 85 if company1_data['halal_status'] == "Halal" else 25
+            compliance_level2 = 85 if company2_data['halal_status'] == "Halal" else 25
             
             # Create gauge charts
             fig = go.Figure()
             
             fig.add_trace(go.Indicator(
                 mode = "gauge+number",
-                value = data["Compliance Level"][0],
+                value = compliance_level1,
                 title = {'text': company1_data['name']},
                 domain = {'x': [0, 0.45], 'y': [0, 1]},
                 gauge = {
@@ -1476,7 +1530,7 @@ def show_halal_comparison(halal_df, sdg_df):
             
             fig.add_trace(go.Indicator(
                 mode = "gauge+number",
-                value = data["Compliance Level"][1],
+                value = compliance_level2,
                 title = {'text': company2_data['name']},
                 domain = {'x': [0.55, 1], 'y': [0, 1]},
                 gauge = {
