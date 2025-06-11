@@ -931,7 +931,7 @@ def show_home(halal_df, sdg_df):
 
             # Show companies associated with this SDG
             with st.expander(f"Companies Focused on SDG {goal}"):
-                if companies:
+                if len(companies) > 0 :
                     for company in companies:
                         st.markdown(f"- {company}")
                 else:
