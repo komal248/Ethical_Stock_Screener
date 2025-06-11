@@ -432,7 +432,6 @@ def plot_stock_history(ticker):
         return None
 
 
-# Grok API integration
 def get_grok_analysis(company_name, ticker):
     """Get ethical analysis from Grok API for companies not in the dataset"""
     try:
@@ -517,14 +516,14 @@ def get_grok_analysis(company_name, ticker):
             response_data = response.json()
             content = response_data['choices'][0]['message']['content']
             
-            # FIX: Handle trailing notes/comments after JSON
+            # Enhanced JSON parsing with error correction
             try:
-                # Try to parse directly first
+                # First try to parse directly
                 return json.loads(content)
             except json.JSONDecodeError:
-                # If direct parse fails, look for JSON boundaries
+                # If direct parse fails, find and clean JSON
                 try:
-                    # Find the first { and last } to extract the JSON
+                    # Find the first { and last } to extract JSON
                     start_index = content.find('{')
                     end_index = content.rfind('}') + 1
                     
@@ -534,11 +533,16 @@ def get_grok_analysis(company_name, ticker):
                         
                     json_str = content[start_index:end_index]
                     
-                    # FIX: Remove any trailing text after JSON
-                    if not json_str.strip().endswith('}'):
-                        # Find last valid closing brace
-                        end_index = json_str.rfind('}') + 1
-                        json_str = json_str[:end_index]
+                    # FIX: Remove any extra closing braces at the end
+                    while json_str.endswith('}') and json_str.count('{') < json_str.count('}'):
+                        json_str = json_str[:-1]
+                    
+                    # FIX: Add this to handle extra content
+                    if not json_str.endswith('}'):
+                        # Find the last valid closing brace
+                        last_valid_brace = json_str.rfind('}')
+                        if last_valid_brace != -1:
+                            json_str = json_str[:last_valid_brace + 1]
                     
                     return json.loads(json_str)
                 except Exception as e:
