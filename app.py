@@ -516,19 +516,28 @@ def get_grok_analysis(company_name, ticker):
             # Extract the JSON content from the response
             response_data = response.json()
             content = response_data['choices'][0]['message']['content']
-
-            # Extract JSON from the response string
+            
+            # FIX: Improved JSON parsing logic
             try:
-                # Find JSON part in the response
-                json_start = content.find('{')
-                json_end = content.rfind('}') + 1
-                json_str = content[json_start:json_end]
-
-                # Parse the JSON
-                return json.loads(json_str)
+                # First try to parse the entire content as JSON
+                return json.loads(content)
             except json.JSONDecodeError:
-                st.error("Error parsing Grok response")
-                return None
+                # If that fails, look for the JSON object within the content
+                try:
+                    # Find the first { and last } to extract the JSON
+                    start_index = content.find('{')
+                    end_index = content.rfind('}') + 1
+                    
+                    if start_index == -1 or end_index == -1:
+                        st.error("No JSON object found in Grok response")
+                        return None
+                        
+                    json_str = content[start_index:end_index]
+                    return json.loads(json_str)
+                except Exception as e:
+                    st.error(f"Error parsing Grok response: {str(e)}")
+                    st.error(f"Response content: {content}")
+                    return None
         else:
             st.error(f"Grok API error: {response.status_code} - {response.text}")
             return None
@@ -764,70 +773,6 @@ def plot_sdg_keyword_counts(sdg_counts):
         return None
 
 
-def display_sdg_grok_results(company, ticker, grok_data):
-    """Display SDG-specific results from Grok API"""
-    st.subheader(f"{company} ({ticker})" if ticker else company)
-
-    # SDG Analysis
-    sdg_goal = grok_data.get('sdg_goal', 0)
-    secondary_sdgs = grok_data.get('secondary_sdgs', '')
-    sdg_keywords = grok_data.get('sdg_keywords', '')
-    sdg_impact = grok_data.get('sdg_impact', '')
-    controversies = grok_data.get('controversies', '')
-
-    if sdg_goal and sdg_goal != 0:
-        # Main SDG card
-        with st.container():
-            st.markdown(f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg_goal, "#1f77b4")};">',
-                        unsafe_allow_html=True)
-            st.markdown(f"### Primary SDG: {sdg_goal} - {SDG_TITLES.get(sdg_goal, '')}")
-            st.markdown(f"**Description:** {SDG_DESCRIPTIONS.get(sdg_goal, '')}")
-            
-            if sdg_impact:
-                st.markdown("**Impact Analysis:**")
-                st.info(f"{sdg_impact}")
-                
-            if sdg_keywords:
-                st.markdown("**Related Keywords:**")
-                keywords = sdg_keywords.split(",")
-                for kw in keywords:
-                    st.markdown(f'<span class="keyword-badge">{kw.strip()}</span>', unsafe_allow_html=True)
-                    
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Secondary SDGs
-        if secondary_sdgs:
-            st.subheader("Secondary SDGs")
-            secondary_list = [int(s.strip()) for s in secondary_sdgs.split(",") if s.strip().isdigit()]
-            cols = st.columns(len(secondary_list))
-            for idx, sdg in enumerate(secondary_list):
-                with cols[idx]:
-                    with st.container():
-                        st.markdown(f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(sdg, "#1f77b4")};">',
-                                    unsafe_allow_html=True)
-                        st.markdown(f"<div class='sdg-badge' style='background-color:{SDG_COLORS.get(sdg)}'>{sdg}</div>", unsafe_allow_html=True)
-                        st.markdown(f"**{SDG_TITLES.get(sdg, '')}**")
-                        st.markdown(f"<small>{SDG_DESCRIPTIONS.get(sdg, '')}</small>", unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Controversies
-        if controversies and controversies.lower() != "none known":
-            st.subheader("Controversies & Concerns")
-            with st.container():
-                st.markdown('<div class="error-card">', unsafe_allow_html=True)
-                st.error(controversies)
-                st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        with st.container():
-            st.markdown('<div class="warning-card">', unsafe_allow_html=True)
-            st.warning("No SDG analysis available for this company")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    # Disclaimer
-    st.markdown("---")
-    st.caption("ℹ️ This analysis was generated using AI.")
-
-
 # Enhanced Halal Analysis Display
 def display_halal_analysis(company, ticker, status, reason, business_activities, financial_analysis, controversies):
     """Display detailed Halal analysis"""
@@ -925,10 +870,11 @@ def show_home(halal_df, sdg_df):
 
             with st.container():
                 st.markdown(
-                    f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">'
-                    f'<h4>SDG {goal}: {SDG_TITLES[goal]}</h4>'
-                    f'<p><small>{SDG_DESCRIPTIONS[goal]}</small></p>'
-                    f'</div>', unsafe_allow_html=True)
+                    f'<div class="sdg-card" style="border-left: 5px solid {SDG_COLORS.get(goal, "#1f77b4")};">',
+                    unsafe_allow_html=True)
+                st.markdown(f"### SDG {goal}: {SDG_TITLES[goal]}")
+                st.markdown(f"<small>{SDG_DESCRIPTIONS[goal]}</small>", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             # Show companies associated with this SDG
             with st.expander(f"Companies Focused on SDG {goal}"):
